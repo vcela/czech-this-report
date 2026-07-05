@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Montserrat_Alternates } from "next/font/google";
 import "../globals.css";
 import { isLocale, LOCALES, type Locale } from "@/lib/i18n";
 import { getDict } from "@/lib/i18n/dictionaries";
@@ -7,8 +7,11 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { SITE_URL } from "@/lib/site";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin", "latin-ext"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const montserratAlternates = Montserrat_Alternates({
+  variable: "--font-montserrat-alternates",
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+});
 
 export function generateStaticParams() {
   return LOCALES.map((locale) => ({ locale }));
@@ -49,10 +52,7 @@ export default async function RootLayout(props: Props) {
   const dict = getDict(locale);
 
   return (
-    <html
-      lang={locale}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang={locale} className={`${montserratAlternates.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <a
           href="#main"
