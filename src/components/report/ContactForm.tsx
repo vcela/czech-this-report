@@ -44,6 +44,10 @@ export function ContactForm({
           reportId,
         }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        console.error("Contact form submission failed", data);
+      }
       setState(res.ok ? "sent" : "error");
     } catch {
       setState("error");

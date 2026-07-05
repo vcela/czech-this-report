@@ -18,11 +18,18 @@ export async function POST(req: NextRequest) {
   if (!name || !message || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
-  saveLead({
-    reportId: typeof body.reportId === "string" ? body.reportId.slice(0, 20) : undefined,
-    name,
-    email,
-    message,
-  });
+
+  try {
+    saveLead({
+      reportId: typeof body.reportId === "string" ? body.reportId.slice(0, 20) : undefined,
+      name,
+      email,
+      message,
+    });
+  } catch (error) {
+    console.error("Failed to save contact lead", error);
+    return NextResponse.json({ error: "storage_error" }, { status: 500 });
+  }
+
   return NextResponse.json({ ok: true });
 }
