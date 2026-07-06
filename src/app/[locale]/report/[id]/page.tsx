@@ -8,6 +8,8 @@ import { isLocale, type Locale } from "@/lib/i18n";
 import { getDict } from "@/lib/i18n/dictionaries";
 import { ScoreGauge, bandOf } from "@/components/report/ScoreGauge";
 import { FindingsExplorer, type UiFinding } from "@/components/report/FindingsExplorer";
+import { FixPrompt } from "@/components/report/FixPrompt";
+import { buildFixPrompt } from "@/lib/audit/fixPrompt";
 import { ShareBar } from "@/components/report/ShareBar";
 import { ContactForm } from "@/components/report/ContactForm";
 import { AiSelfTest } from "@/components/report/AiSelfTest";
@@ -115,6 +117,24 @@ export default async function ReportPage(props: Props) {
   const conf = report.a11y.conformance;
   const perf = report.perf;
 
+  const fixPromptText = buildFixPrompt(report.finalUrl, findings, {
+    lead: t.fixPrompt.lead,
+    rules: t.fixPrompt.rules,
+    findingsHeading: t.fixPrompt.findingsHeading,
+    noFindings: t.fixPrompt.noFindings,
+    whyLabel: t.fixPrompt.whyLabel,
+    evidenceLabel: t.fixPrompt.evidenceLabel,
+    fixLabel: t.fixPrompt.fixLabel,
+    wcagLabel: t.fixPrompt.wcagLabel,
+    whoLabel: t.fixPrompt.whoLabel,
+    measured: t.finding.measured,
+    estimated: t.finding.estimated,
+    notTested: t.finding.notTested,
+    closing: t.fixPrompt.closing,
+    priorities: t.priorities,
+    pillarNames: t.pillarNames,
+  });
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 space-y-10">
       {/* Header */}
@@ -182,6 +202,20 @@ export default async function ReportPage(props: Props) {
           </div>
         )}
       </section>
+
+      {/* Fix it with AI — one-click prompt for an AI coding assistant */}
+      <FixPrompt
+        prompt={fixPromptText}
+        labels={{
+          title: t.fixPrompt.title,
+          intro: t.fixPrompt.intro,
+          copy: t.fixPrompt.copy,
+          copied: t.fixPrompt.copied,
+          hint: t.fixPrompt.hint,
+          show: t.fixPrompt.show,
+          hide: t.fixPrompt.hide,
+        }}
+      />
 
       {/* Findings */}
       <FindingsExplorer
