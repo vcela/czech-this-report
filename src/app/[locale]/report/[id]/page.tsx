@@ -353,6 +353,11 @@ export default async function ReportPage(props: Props) {
         </div>
       </div>
 
+      <details className="no-print rounded-xl border border-dashed border-border bg-surface p-5">
+        <summary className="font-semibold cursor-pointer">{t.share.staleTitle}</summary>
+        <p className="text-sm text-muted leading-relaxed mt-3">{t.share.staleText}</p>
+      </details>
+
       {/* Hire form */}
       <ContactForm labels={t.hire} reportId={report.id} contactEmail={CREATOR.email} />
     </div>

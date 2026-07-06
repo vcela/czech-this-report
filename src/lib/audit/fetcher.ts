@@ -38,8 +38,20 @@ async function timedFetch(
   try {
     return await fetch(url, {
       redirect: "follow",
+      // Every audit must reflect the live site. Belt-and-suspenders against
+      // any caching layer: Next's own fetch data cache (default is already
+      // uncached, but this makes intent explicit and future-proof) and,
+      // via the request headers below, CDNs/reverse proxies in front of the
+      // target site that are configured to revalidate on a no-cache request.
+      cache: "no-store",
       ...init,
-      headers: { "user-agent": UA, accept: "text/html,*/*", ...init?.headers },
+      headers: {
+        "user-agent": UA,
+        accept: "text/html,*/*",
+        "cache-control": "no-cache",
+        pragma: "no-cache",
+        ...init?.headers,
+      },
       signal: ctrl.signal,
     });
   } finally {

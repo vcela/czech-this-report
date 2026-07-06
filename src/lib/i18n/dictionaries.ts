@@ -132,6 +132,8 @@ const en = {
       pdf: "Save as PDF",
       rescan: "Re-scan this site",
       rescanning: "Re-scanning…",
+      staleTitle: "Already fixed it, but the finding didn't change?",
+      staleText: "Every scan fetches your live page fresh — we never reuse an old result. If a fix still isn't reflected after a re-scan, check two things: (1) your host, CMS caching plugin or CDN (Cloudflare etc.) may still be serving a cached copy of the page — clear that cache and try again in a few minutes; (2) we read the page's raw HTML only, without running JavaScript — if your title or meta tags are inserted by a script rather than present in the server's response, view the page source (Ctrl/Cmd+U) to see exactly what we see.",
     },
     compare: {
       title: "Progress since last scan",
@@ -319,6 +321,8 @@ const cs: typeof en = {
       pdf: "Uložit jako PDF",
       rescan: "Znovu prověřit web",
       rescanning: "Prověřuji znovu…",
+      staleTitle: "Už jste to opravili, ale nález se nezměnil?",
+      staleText: "Každý sken načítá vaši živou stránku znovu — nikdy nepoužíváme starý výsledek. Pokud se oprava neprojeví ani po re-scanu, zkontrolujte dvě věci: (1) váš hosting, cachovací plugin v redakčním systému nebo CDN (např. Cloudflare) může pořád servírovat uloženou starou verzi stránky — vyčistěte tuto cache a zkuste to za pár minut znovu; (2) čteme jen syrové HTML ze serveru, bez spouštění JavaScriptu — pokud se váš titulek nebo meta značky vkládají až skriptem, ne přímo v odpovědi serveru, zobrazte si zdrojový kód stránky (Ctrl/Cmd+U) a uvidíte přesně to, co vidíme my.",
     },
     compare: {
       title: "Pokrok od minulého skenu",
