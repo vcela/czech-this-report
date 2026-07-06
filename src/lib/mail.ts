@@ -1,11 +1,36 @@
 import { Resend } from "resend";
 import { CREATOR, SITE_URL } from "./site";
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const DEFAULT_FROM = "Czech Th!s Report <onboarding@resend.dev>";
+
+/**
+ * Dashboard env-var UIs (Railway, Render, Vercel…) store the value exactly
+ * as typed — unlike a .env file, they don't strip a surrounding "quoted
+ * string". Trim stray wrapping quotes so a value copied from .env.example
+ * still parses instead of producing an invalid Resend `from` field.
+ */
+function unquote(raw: string): string {
+  const v = raw.trim();
+  if (v.length >= 2 && ((v[0] === '"' && v.endsWith('"')) || (v[0] === "'" && v.endsWith("'")))) {
+    return v.slice(1, -1).trim();
+  }
+  return v;
+}
+
+const RESEND_API_KEY = process.env.RESEND_API_KEY?.trim() || undefined;
 // Must be an address on a domain verified in Resend, or their sandbox
 // address (onboarding@resend.dev) while testing without a custom domain.
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Czech Th!s Report <onboarding@resend.dev>";
-const TO_EMAIL = process.env.CONTACT_TO_EMAIL || CREATOR.email;
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ? unquote(process.env.RESEND_FROM_EMAIL) : DEFAULT_FROM;
+const TO_EMAIL = process.env.CONTACT_TO_EMAIL ? unquote(process.env.CONTACT_TO_EMAIL) : CREATOR.email;
+
+// Name <email@domain> or plain email@domain — same shape Resend requires.
+const FROM_PATTERN = /^([^<>]+<)?[^\s<>@"]+@[^\s<>@"]+\.[^\s<>@"]+>?$/;
+if (!FROM_PATTERN.test(FROM_EMAIL)) {
+  console.error(
+    `RESEND_FROM_EMAIL is not a valid "Name <email@domain>" address (got: ${JSON.stringify(FROM_EMAIL)}). Falling back to the Resend sandbox address; contact-form e-mails will fail until this is fixed.`
+  );
+}
+const SAFE_FROM_EMAIL = FROM_PATTERN.test(FROM_EMAIL) ? FROM_EMAIL : DEFAULT_FROM;
 
 let client: Resend | null = null;
 function getClient(): Resend | null {
@@ -45,7 +70,7 @@ export async function sendContactLeadEmail(lead: ContactLeadEmail): Promise<bool
 
   try {
     const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: SAFE_FROM_EMAIL,
       to: TO_EMAIL,
       replyTo: lead.email,
       subject: `New enquiry from ${lead.name} — Czech Th!s Report`,
