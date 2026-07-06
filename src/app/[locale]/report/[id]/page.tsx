@@ -10,6 +10,7 @@ import { ScoreGauge, bandOf } from "@/components/report/ScoreGauge";
 import { FindingsExplorer, type UiFinding } from "@/components/report/FindingsExplorer";
 import { ShareBar } from "@/components/report/ShareBar";
 import { ContactForm } from "@/components/report/ContactForm";
+import { AiSelfTest } from "@/components/report/AiSelfTest";
 import { AuditForm } from "@/components/AuditForm";
 import { CREATOR } from "@/lib/site";
 import type { Report } from "@/lib/audit/types";
@@ -253,6 +254,7 @@ export default async function ReportPage(props: Props) {
             {t.aiNote.cta}
           </a>
         </p>
+        <AiSelfTest labels={t.aiNote.selfTest} host={host} />
       </section>
 
       {/* Performance detail */}

@@ -113,6 +113,30 @@ const en = {
       title: "How we test AI visibility",
       text: "Everything above is measured directly on your site (crawler access, structured data, content signals). What this free scan does NOT do is query ChatGPT, Perplexity or Gemini with real customer prompts to see if they mention you — that requires paid API calls per scan. We'd rather tell you that openly than show you a made-up number.",
       cta: "Want a real AI mention test with live prompts? That's part of the paid deep audit — get in touch below.",
+      selfTest: {
+        show: "Show prompts to test it yourself",
+        hide: "Hide prompts",
+        intro: "You can do a quick version yourself in a few minutes. Open each assistant, paste a prompt below, and see whether it mentions your site. Replace anything in [square brackets] with your own product, service or region first.",
+        chatsLabel: "Open an assistant:",
+        note: "Claude and Gemini answer mostly from training data unless you turn on web search, so a missing mention there can just mean they haven't crawled you yet. ChatGPT (with search) and Perplexity look at the live web and cite sources — watch whether your domain appears among them.",
+        copy: "Copy",
+        copied: "Copied!",
+        promptsLabel: "Prompts to try:",
+        prompts: [
+          {
+            label: "Discovery — do they recommend you unprompted?",
+            text: "I'm looking for [your product or service] in [city / region / country]. Recommend the 5 best options and say why for each one.",
+          },
+          {
+            label: "Brand knowledge — what does the AI know about you?",
+            text: "What do you know about the website {host}? What does it do, who is it for, and is it a trustworthy source?",
+          },
+          {
+            label: "Comparison — how do you stack up against rivals?",
+            text: "Compare {host} with its main competitors in [your field]. Who would you recommend to whom, and why?",
+          },
+        ],
+      },
     },
     perf: {
       titleMeasured: "Loading speed (measured by Google Lighthouse)",
@@ -302,6 +326,30 @@ const cs: typeof en = {
       title: "Jak testujeme AI viditelnost",
       text: "Vše výše je změřeno přímo na vašem webu (přístup robotů, strukturovaná data, obsahové signály). Co tento bezplatný sken NEDĚLÁ: neptá se ChatGPT, Perplexity ani Gemini reálnými zákaznickými dotazy, jestli vás zmiňují — to vyžaduje placené API volání za každý sken. Radši vám to řekneme na rovinu, než abychom ukázali vymyšlené číslo.",
       cta: "Chcete skutečný test AI zmínek s živými dotazy? Je součástí placeného hloubkového auditu — ozvěte se níže.",
+      selfTest: {
+        show: "Zobrazit prompty pro vlastní test",
+        hide: "Skrýt prompty",
+        intro: "Rychlou verzi si můžete udělat sami za pár minut. Otevřete si každého asistenta, vložte některý z promptů níže a sledujte, jestli váš web zmíní. Nejdřív nahraďte text v [hranatých závorkách] svým produktem, službou nebo regionem.",
+        chatsLabel: "Otevřít asistenta:",
+        note: "Claude a Gemini odpovídají bez zapnutého vyhledávání hlavně z trénovacích dat — chybějící zmínka tam může znamenat jen to, že vás zatím nenačetli. ChatGPT (s vyhledáváním) a Perplexity se dívají do živého webu a uvádějí zdroje — sledujte, jestli je mezi nimi vaše doména.",
+        copy: "Kopírovat",
+        copied: "Zkopírováno!",
+        promptsLabel: "Prompty k vyzkoušení:",
+        prompts: [
+          {
+            label: "Objevení — doporučí vás sami od sebe?",
+            text: "Hledám [tvůj produkt nebo službu] v [město / region / ČR]. Doporuč mi 5 nejlepších možností a u každé napiš proč.",
+          },
+          {
+            label: "Znalost značky — co o vás AI ví?",
+            text: "Co víš o webu {host}? Čím se zabývá, komu je určený a je to důvěryhodný zdroj?",
+          },
+          {
+            label: "Srovnání — jak obstojíte proti konkurenci?",
+            text: "Porovnej {host} s hlavní konkurencí v [tvůj obor]. Komu bys doporučil koho a proč?",
+          },
+        ],
+      },
     },
     perf: {
       titleMeasured: "Rychlost načítání (změřeno Google Lighthouse)",
