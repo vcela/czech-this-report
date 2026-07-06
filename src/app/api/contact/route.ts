@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveLead } from "@/lib/db";
+import { sendContactLeadEmail } from "@/lib/mail";
 
 export async function POST(req: NextRequest) {
   let body: { name?: string; email?: string; message?: string; reportId?: string; website?: string };
@@ -19,17 +20,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
 
+  const reportId = typeof body.reportId === "string" ? body.reportId.slice(0, 20) : undefined;
+
   try {
-    saveLead({
-      reportId: typeof body.reportId === "string" ? body.reportId.slice(0, 20) : undefined,
-      name,
-      email,
-      message,
-    });
+    saveLead({ reportId, name, email, message });
   } catch (error) {
     console.error("Failed to save contact lead", error);
     return NextResponse.json({ error: "storage_error" }, { status: 500 });
   }
+
+  // The lead is safely stored above regardless of e-mail outcome, so a
+  // Resend failure (missing key, API error) must not fail the request.
+  await sendContactLeadEmail({ name, email, message, reportId });
 
   return NextResponse.json({ ok: true });
 }
