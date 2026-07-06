@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE_URL } from "@/lib/site";
+
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: "Page not found",
+};
 
 export default function NotFound() {
   return (
