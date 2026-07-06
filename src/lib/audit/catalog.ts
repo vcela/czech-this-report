@@ -108,6 +108,30 @@ export const CATALOG: Record<string, CheckDef> = {
       cs: "Meta description má vhodnou délku.",
     },
   },
+  "seo-cookie-consent": {
+    id: "seo-cookie-consent",
+    pillar: "seo",
+    roles: ["developer", "copywriter"],
+    impact: 2,
+    effort: 1,
+    confidence: "measured",
+    title: {
+      en: "The site appears to need cookie controls, but the required notice, settings and policy pages are missing.",
+      cs: "Web zřejmě potřebuje prvky pro cookies, ale chybí potřebné oznámení, nastavení a stránky s informacemi.",
+    },
+    why: {
+      en: "If the site uses analytics, ads or other tracking, visitors usually need a clear cookie notice, a way to change preferences and pages that explain the cookies used and the privacy/GDPR basis.",
+      cs: "Pokud web používá analytiku, reklamy nebo jiné sledování, návštěvníci obvykle potřebují jasné oznámení o cookies, možnost změnit preference a stránky, které vysvětlují používané cookies a základ pro ochranu osobních údajů/GDPR.",
+    },
+    fix: {
+      en: "Add a visible cookie notice or banner, a link to open or change cookie settings, and dedicated pages for cookie information and privacy/GDPR. If the site does not actually use cookies or tracking, you can skip these elements.",
+      cs: "Přidejte viditelné oznámení nebo banner o cookies, odkaz na otevření nebo změnu nastavení cookies a samostatné stránky o cookies a ochraně osobních údajů/GDPR. Pokud web cookies ani sledování ve skutečnosti nepoužívá, tyto prvky můžete vynechat.",
+    },
+    passTitle: {
+      en: "The site either has clear cookie controls or does not appear to need them.",
+      cs: "Web buď má jasné prvky pro cookies, nebo se zdá, že je nepotřebuje.",
+    },
+  },
   "seo-h1-missing": {
     id: "seo-h1-missing",
     pillar: "seo",

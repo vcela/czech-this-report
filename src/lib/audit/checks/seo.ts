@@ -27,6 +27,63 @@ function robotsBlocksAll(robots: string): boolean {
   return false;
 }
 
+type CookieControlStatus = "none" | "simple-banner" | "consent-manager";
+type CookieGapType = "complete" | "settings-only" | "policy-only" | "privacy-only" | "mixed-gap";
+
+function detectCookieControls(text: string, linksText: string, scriptsText: string): {
+  needsControls: boolean;
+  status: CookieControlStatus;
+  hasCookieSettings: boolean;
+  hasCookiePolicy: boolean;
+  hasPrivacyPage: boolean;
+  detectedSignals: string[];
+  gapType: CookieGapType;
+} {
+  const combined = `${text}\n${linksText}\n${scriptsText}`.toLowerCase();
+  const hasTrackingSignal = /(google analytics|gtag|googletagmanager|gtm|matomo|hotjar|clarity|segment|mixpanel|facebook pixel|analytics|tracking)/i.test(combined);
+  const hasCookieBannerSignal = /cookie(?:s)?\s*(?:banner|notice|consent)|consent manager|accept all|reject all|manage (?:preferences|cookies)|cookie settings|privacy settings|learn more about cookies/i.test(combined);
+  const hasConsentManagerSignal = /(cookiebot|onetrust|usercentrics|didomi|osano|klaro|cookieyes|iubenda|consentmanager|consent management)/i.test(combined);
+  const hasCookieSettings = /cookie(?:s)?\s*(?:settings?|preferences?|consent)|manage cookies|consent preferences|accept all|reject all/i.test(`${text}\n${linksText}`);
+  const hasCookiePolicy = /\bcookie(?:s)?\s*(?:policy|declaration|list|information|notice)|cookies? policy|cookie declaration|cookie statement/i.test(linksText);
+  const hasPrivacyPage = /\b(privacy|gdpr|data protection|data privacy|privacy policy|privacy notice)\b/i.test(linksText);
+
+  const needsControls = hasTrackingSignal || hasCookieBannerSignal || hasCookieSettings || hasCookiePolicy || hasPrivacyPage;
+  const status: CookieControlStatus = hasConsentManagerSignal
+    ? "consent-manager"
+    : hasCookieBannerSignal || hasCookieSettings
+      ? "simple-banner"
+      : "none";
+
+  const detectedSignals: string[] = [];
+  if (hasTrackingSignal) detectedSignals.push("tracking scripts");
+  if (hasCookieBannerSignal) detectedSignals.push("cookie banner / notice");
+  if (hasConsentManagerSignal) detectedSignals.push("consent manager script");
+  if (hasCookieSettings) detectedSignals.push("cookie settings UI");
+  if (hasCookiePolicy) detectedSignals.push("cookie policy link");
+  if (hasPrivacyPage) detectedSignals.push("privacy/GDPR link");
+
+  const missing = [
+    !hasCookieSettings ? "settings" : null,
+    !hasCookiePolicy ? "policy" : null,
+    !hasPrivacyPage ? "privacy" : null,
+  ].filter(Boolean) as string[];
+  const gapType: CookieGapType = missing.length === 0
+    ? "complete"
+    : missing.length === 1
+      ? (missing[0] === "settings" ? "settings-only" : missing[0] === "policy" ? "policy-only" : "privacy-only")
+      : "mixed-gap";
+
+  return {
+    needsControls,
+    status,
+    hasCookieSettings,
+    hasCookiePolicy,
+    hasPrivacyPage,
+    detectedSignals,
+    gapType,
+  };
+}
+
 export function runSeoChecks(site: SiteSnapshot, perf: PerfMetrics): SeoResult {
   const f: Finding[] = [];
   const p: PassedCheck[] = [];
@@ -70,6 +127,58 @@ export function runSeoChecks(site: SiteSnapshot, perf: PerfMetrics): SeoResult {
       );
     } else {
       p.push(passed("seo-meta-description-length"));
+    }
+  }
+
+  /* ---- cookie / privacy controls ---- */
+  const pageText = $("body").text().toLowerCase();
+  const linksText = $("a[href]")
+    .map((_, el) => {
+      const text = $(el).text().trim().toLowerCase();
+      const href = ($(el).attr("href") ?? "").toLowerCase();
+      return `${text} ${href}`;
+    })
+    .get()
+    .join("\n");
+  const scriptsText = $("script[src]")
+    .map((_, el) => ($(el).attr("src") ?? "").toLowerCase())
+    .get()
+    .join("\n");
+  const cookieControls = detectCookieControls(pageText, linksText, scriptsText);
+
+  if (!cookieControls.needsControls) {
+    p.push(passed("seo-cookie-consent"));
+  } else {
+    const missing: string[] = [];
+    if (!cookieControls.hasCookieSettings) missing.push("cookie notice/settings");
+    if (!cookieControls.hasCookiePolicy) missing.push("cookie policy page");
+    if (!cookieControls.hasPrivacyPage) missing.push("privacy/GDPR page");
+
+    const statusText = cookieControls.status === "consent-manager"
+      ? "a consent manager appears to be present"
+      : cookieControls.status === "simple-banner"
+        ? "a basic cookie banner or notice appears to be present"
+        : "no obvious cookie-control UI was detected";
+
+    const gapLabel = cookieControls.gapType === "settings-only"
+      ? "This looks like a settings-control gap"
+      : cookieControls.gapType === "policy-only"
+        ? "This looks like a cookie-policy gap"
+        : cookieControls.gapType === "privacy-only"
+          ? "This looks like a privacy/GDPR-page gap"
+          : "This looks like a broader consent setup gap";
+
+    if (missing.length > 0) {
+      f.push(
+        finding("seo-cookie-consent", [
+          ev(
+            `${gapLabel}. The page appears to use cookies or tracking and ${statusText}, but the required notice/settings control or obvious links to a cookie policy and a privacy/GDPR page were not fully found. Missing: ${missing.join(", ")}. Detected signals: ${cookieControls.detectedSignals.join(", ") || "none"}.`,
+            `${gapLabel.replace("This", "Zdá se").replace("looks", "že jde").replace("a ", "")}. Stránka používá cookies nebo sledování a ${statusText}, ale potřebný prvek pro oznámení/nastavení nebo zjevné odkazy na stránku o cookies a ochranu osobních údajů/GDPR nebyly úplně nalezeny. Chybí: ${missing.join(", ")}. Zjištěné signály: ${cookieControls.detectedSignals.join(", ") || "žádné"}.`
+          ),
+        ])
+      );
+    } else {
+      p.push(passed("seo-cookie-consent"));
     }
   }
 

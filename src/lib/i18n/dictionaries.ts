@@ -149,9 +149,9 @@ const en = {
       hide: "Hide prompt",
       // --- building blocks of the prompt body itself ---
       lead:
-        "You are an expert web developer. An automated audit of {url} (AI visibility, SEO and WCAG 2.2 accessibility) produced the findings below. Fix them directly in this project's source code.",
+        "You are an expert web developer. An automated audit of {url} (AI visibility, SEO, privacy/cookie compliance and WCAG 2.2 accessibility) produced the findings below. Fix them directly in this project's source code.",
       rules:
-        "Rules: work through the findings in the order given (most important first). For each one, locate the relevant code, apply the fix, and keep a short note of what you changed. Do not fabricate content, scores or metadata — if a fix needs real information (a business address, alt text, a meta description), ask me instead of inventing it. Findings marked \"Estimate\" or \"Not tested\" are based on indirect signals; verify them before making large changes.",
+        "Rules: work through the findings in the order given (most important first). For each one, locate the relevant code, apply the fix, and keep a short note of what you changed. Do not fabricate content, scores or metadata — if a fix needs real information (a business address, alt text, a meta description, a cookie policy or privacy notice), ask me instead of inventing it. Findings marked \"Estimate\" or \"Not tested\" are based on indirect signals; verify them before making large changes.",
       findingsHeading: "FINDINGS TO FIX:",
       noFindings: "The audit found no actionable issues — there is nothing to fix. 🎉",
       whyLabel: "Why it matters",
@@ -386,9 +386,9 @@ const cs: typeof en = {
       hide: "Skrýt prompt",
       // --- stavební části samotného textu promptu ---
       lead:
-        "Jsi zkušený webový vývojář. Automatický audit webu {url} (AI viditelnost, SEO a přístupnost dle WCAG 2.2) našel níže uvedené nálezy. Oprav je přímo ve zdrojovém kódu tohoto projektu.",
+        "Jsi zkušený webový vývojář. Automatický audit webu {url} (AI viditelnost, SEO, soulad s cookies/ochranou soukromí a přístupnost dle WCAG 2.2) našel níže uvedené nálezy. Oprav je přímo ve zdrojovém kódu tohoto projektu.",
       rules:
-        "Pravidla: procházej nálezy v uvedeném pořadí (nejdůležitější první). U každého najdi příslušný kód, proveď opravu a stručně si poznač, co jsi změnil. Nic si nevymýšlej — obsah, čísla ani metadata; pokud oprava potřebuje reálný údaj (adresu firmy, alt text, popisek stránky), zeptej se mě, místo abys ho vymýšlel. Nálezy označené „Odhad“ nebo „Netestováno“ vycházejí z nepřímých signálů; před většími zásahy si je ověř.",
+        "Pravidla: procházej nálezy v uvedeném pořadí (nejdůležitější první). U každého najdi příslušný kód, proveď opravu a stručně si poznač, co jsi změnil. Nic si nevymýšlej — obsah, čísla ani metadata; pokud oprava potřebuje reálný údaj (adresu firmy, alt text, popisek stránky, stránku o cookies nebo zásady ochrany soukromí), zeptej se mě, místo abys ho vymýšlel. Nálezy označené „Odhad“ nebo „Netestováno“ vycházejí z nepřímých signálů; před většími zásahy si je ověř.",
       findingsHeading: "NÁLEZY K OPRAVĚ:",
       noFindings: "Audit nenašel nic, co by šlo opravit — není co řešit. 🎉",
       whyLabel: "Proč to vadí",
