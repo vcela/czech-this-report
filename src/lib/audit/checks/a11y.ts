@@ -33,6 +33,16 @@ const RULE_MAP: Record<string, string> = {
 
 const ARIA_PREFIX_CHECK = "a11y-aria-misuse";
 
+/**
+ * Memory here scales with element count, not page size: jsdom builds a node tree
+ * and axe builds a second flattened tree over it, so a densely marked-up page can
+ * cost hundreds of MB regardless of how few kilobytes it weighs. Past this many
+ * elements we skip axe and fall back to the static checks — the same honest
+ * "conformance: unknown" path used when axe fails for any other reason.
+ * Real pages sit well under this; 25k elements is already an extreme outlier.
+ */
+const MAX_AXE_ELEMENTS = 25_000;
+
 interface AxeViolationLite {
   id: string;
   help: string;
@@ -43,9 +53,16 @@ interface AxeViolationLite {
 }
 
 async function runAxe(site: SiteSnapshot): Promise<AxeViolationLite[] | null> {
+  // cheap pre-check on the cheerio tree we already built, before paying for jsdom
+  if (site.$("*").length > MAX_AXE_ELEMENTS) return null;
+
+  // `pretendToBeVisual` starts a requestAnimationFrame loop that keeps the whole
+  // window — DOM tree plus the ~700 kB of axe source eval'd into it — reachable
+  // forever. It must be closed on every path, or each failed audit leaks a DOM.
+  let dom: JSDOM | undefined;
   try {
     const virtualConsole = new VirtualConsole(); // swallow CSS/JS parse noise
-    const dom = new JSDOM(site.page.html, {
+    dom = new JSDOM(site.page.html, {
       url: site.page.finalUrl,
       pretendToBeVisual: true,
       virtualConsole,
@@ -78,10 +95,11 @@ async function runAxe(site: SiteSnapshot): Promise<AxeViolationLite[] | null> {
       })),
     }));
     (out as AxeViolationLite[] & { passCount?: number }).passCount = results.passes.length;
-    dom.window.close();
     return out;
   } catch {
     return null; // axe failed (unusual markup etc.) — fall back to static checks only
+  } finally {
+    dom?.window.close();
   }
 }
 

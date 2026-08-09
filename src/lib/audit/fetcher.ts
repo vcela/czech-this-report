@@ -5,6 +5,30 @@ const UA =
 
 const FETCH_TIMEOUT_MS = 12_000;
 
+/**
+ * Hard cap on the HTML we keep in memory. The page body is parsed twice — once
+ * by cheerio and once by jsdom — and each tree costs several times the source
+ * size, so an unbounded body from a hostile or just bloated site is the single
+ * biggest driver of peak memory. 2 MB of HTML is already pathological; every
+ * check we run only reads head/meta/landmarks near the top anyway.
+ */
+const MAX_HTML_BYTES = 2_000_000;
+const MAX_TEXT_BYTES = 500_000; // robots.txt / llms.txt / sitemap.xml
+
+/** Read a body but stop after `max` bytes; breaking the loop cancels the stream. */
+async function textCapped(res: Response, max: number): Promise<{ text: string; bytes: number }> {
+  if (!res.body) return { text: "", bytes: 0 };
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
+    chunks.push(chunk);
+    bytes += chunk.length;
+    if (bytes >= max) break;
+  }
+  const kept = Math.min(bytes, max);
+  return { text: Buffer.concat(chunks, kept).toString("utf8"), bytes: kept };
+}
+
 export interface FetchedPage {
   ok: boolean;
   status: number;
@@ -91,9 +115,12 @@ async function fetchPage(url: string): Promise<FetchedPage> {
   const start = Date.now();
   const res = await timedFetch(url);
   const ttfbMs = Date.now() - start;
-  const html = await res.text();
+  const { text: html, bytes } = await textCapped(res, MAX_HTML_BYTES);
   const headers: Record<string, string> = {};
   res.headers.forEach((v, k) => (headers[k.toLowerCase()] = v));
+  // Keep the reported size honest when we truncated: trust content-length if the
+  // server sent one, otherwise report what we actually read.
+  const declared = Number(res.headers.get("content-length"));
   return {
     ok: res.ok,
     status: res.status,
@@ -101,7 +128,7 @@ async function fetchPage(url: string): Promise<FetchedPage> {
     html,
     headers,
     ttfbMs,
-    htmlBytes: Buffer.byteLength(html, "utf8"),
+    htmlBytes: Number.isFinite(declared) && declared > 0 ? declared : bytes,
     redirectedToHttps: (res.url || url).startsWith("https://"),
   };
 }
@@ -110,7 +137,7 @@ async function fetchTextIfOk(url: string): Promise<{ text: string | null; status
   try {
     const res = await timedFetch(url, undefined, 8000);
     if (!res.ok) return { text: null, status: res.status };
-    const text = await res.text();
+    const { text } = await textCapped(res, MAX_TEXT_BYTES);
     return { text, status: res.status };
   } catch {
     return { text: null, status: null };
@@ -164,9 +191,9 @@ export async function fetchSite(requestedUrl: string): Promise<SiteSnapshot> {
       try {
         const res = await timedFetch(u, { method: "GET" }, 8000);
         if (!res.ok) return null;
-        const body = await res.text();
-        // must look like XML sitemap, not an HTML 404 page
-        return /<(urlset|sitemapindex)[\s>]/i.test(body) ? u : null;
+        // only the opening tag matters — never buffer a multi-MB sitemap
+        const { text: head } = await textCapped(res, 8_000);
+        return /<(urlset|sitemapindex)[\s>]/i.test(head) ? u : null;
       } catch {
         return null;
       }

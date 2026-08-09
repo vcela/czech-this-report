@@ -1,6 +1,7 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "deploy": {
+    "startCommand": "NODE_OPTIONS=--max-old-space-size=512 npm start",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",

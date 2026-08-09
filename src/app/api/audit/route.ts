@@ -9,9 +9,20 @@ const hits = new Map<string, { count: number; ts: number }>();
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_PER_WINDOW = 10;
 
+/**
+ * One audit holds a cheerio tree and a full jsdom window at once, so peak
+ * memory scales with concurrent audits, not with traffic. Capping in-flight
+ * runs is what keeps the container's memory ceiling predictable.
+ */
+const MAX_CONCURRENT = 2;
+let inFlight = 0;
+
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
   const now = Date.now();
+  // ponytail: wholesale clear instead of per-entry expiry — an unbounded Map is
+  // the leak, and losing a window early only ever helps the user.
+  if (hits.size > 5000) hits.clear();
   const h = hits.get(ip);
   if (h && now - h.ts < WINDOW_MS) {
     if (h.count >= MAX_PER_WINDOW) {
@@ -20,6 +31,11 @@ export async function POST(req: NextRequest) {
     h.count++;
   } else {
     hits.set(ip, { count: 1, ts: now });
+  }
+
+  if (inFlight >= MAX_CONCURRENT) {
+    // the client already renders `rate-limit` as "try again in a moment"
+    return NextResponse.json({ error: "rate-limit" }, { status: 429 });
   }
 
   let body: { url?: string; prevId?: string };
@@ -32,6 +48,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid-url" }, { status: 400 });
   }
 
+  inFlight++;
   try {
     const report = await runAudit(
       body.url,
@@ -49,5 +66,7 @@ export async function POST(req: NextRequest) {
     }
     // fetch failures (DNS, timeout, refused)
     return NextResponse.json({ error: "unreachable" }, { status: 422 });
+  } finally {
+    inFlight--;
   }
 }
