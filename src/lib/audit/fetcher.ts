@@ -38,6 +38,8 @@ export interface FetchedPage {
   ttfbMs: number;
   htmlBytes: number;
   redirectedToHttps: boolean;
+  /** Names of cookies the server set on this request — i.e. before any consent. */
+  setCookieNames: string[];
 }
 
 export interface SiteSnapshot {
@@ -121,6 +123,10 @@ async function fetchPage(url: string): Promise<FetchedPage> {
   // Keep the reported size honest when we truncated: trust content-length if the
   // server sent one, otherwise report what we actually read.
   const declared = Number(res.headers.get("content-length"));
+  const setCookieNames = res.headers
+    .getSetCookie()
+    .map((c) => c.split("=", 1)[0].trim())
+    .filter(Boolean);
   return {
     ok: res.ok,
     status: res.status,
@@ -130,6 +136,7 @@ async function fetchPage(url: string): Promise<FetchedPage> {
     ttfbMs,
     htmlBytes: Number.isFinite(declared) && declared > 0 ? declared : bytes,
     redirectedToHttps: (res.url || url).startsWith("https://"),
+    setCookieNames: [...new Set(setCookieNames)],
   };
 }
 

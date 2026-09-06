@@ -1,6 +1,7 @@
 import type { SiteSnapshot } from "../fetcher";
 import type { Finding, PassedCheck, PerfMetrics } from "../types";
 import { ev, evRaw, finding, passed } from "../build";
+import { analyzeConsent } from "../cookies";
 
 export interface SeoResult {
   findings: Finding[];
@@ -25,63 +26,6 @@ function robotsBlocksAll(robots: string): boolean {
     }
   }
   return false;
-}
-
-type CookieControlStatus = "none" | "simple-banner" | "consent-manager";
-type CookieGapType = "complete" | "settings-only" | "policy-only" | "privacy-only" | "mixed-gap";
-
-function detectCookieControls(text: string, linksText: string, scriptsText: string): {
-  needsControls: boolean;
-  status: CookieControlStatus;
-  hasCookieSettings: boolean;
-  hasCookiePolicy: boolean;
-  hasPrivacyPage: boolean;
-  detectedSignals: string[];
-  gapType: CookieGapType;
-} {
-  const combined = `${text}\n${linksText}\n${scriptsText}`.toLowerCase();
-  const hasTrackingSignal = /(google analytics|gtag|googletagmanager|gtm|matomo|hotjar|clarity|segment|mixpanel|facebook pixel|analytics|tracking)/i.test(combined);
-  const hasCookieBannerSignal = /cookie(?:s)?\s*(?:banner|notice|consent)|consent manager|accept all|reject all|manage (?:preferences|cookies)|cookie settings|privacy settings|learn more about cookies/i.test(combined);
-  const hasConsentManagerSignal = /(cookiebot|onetrust|usercentrics|didomi|osano|klaro|cookieyes|iubenda|consentmanager|consent management)/i.test(combined);
-  const hasCookieSettings = /cookie(?:s)?\s*(?:settings?|preferences?|consent)|manage cookies|consent preferences|accept all|reject all/i.test(`${text}\n${linksText}`);
-  const hasCookiePolicy = /\bcookie(?:s)?\s*(?:policy|declaration|list|information|notice)|cookies? policy|cookie declaration|cookie statement/i.test(linksText);
-  const hasPrivacyPage = /\b(privacy|gdpr|data protection|data privacy|privacy policy|privacy notice)\b/i.test(linksText);
-
-  const needsControls = hasTrackingSignal || hasCookieBannerSignal || hasCookieSettings || hasCookiePolicy || hasPrivacyPage;
-  const status: CookieControlStatus = hasConsentManagerSignal
-    ? "consent-manager"
-    : hasCookieBannerSignal || hasCookieSettings
-      ? "simple-banner"
-      : "none";
-
-  const detectedSignals: string[] = [];
-  if (hasTrackingSignal) detectedSignals.push("tracking scripts");
-  if (hasCookieBannerSignal) detectedSignals.push("cookie banner / notice");
-  if (hasConsentManagerSignal) detectedSignals.push("consent manager script");
-  if (hasCookieSettings) detectedSignals.push("cookie settings UI");
-  if (hasCookiePolicy) detectedSignals.push("cookie policy link");
-  if (hasPrivacyPage) detectedSignals.push("privacy/GDPR link");
-
-  const missing = [
-    !hasCookieSettings ? "settings" : null,
-    !hasCookiePolicy ? "policy" : null,
-    !hasPrivacyPage ? "privacy" : null,
-  ].filter(Boolean) as string[];
-  const gapType: CookieGapType = missing.length === 0
-    ? "complete"
-    : missing.length === 1
-      ? (missing[0] === "settings" ? "settings-only" : missing[0] === "policy" ? "policy-only" : "privacy-only")
-      : "mixed-gap";
-
-  return {
-    needsControls,
-    status,
-    hasCookieSettings,
-    hasCookiePolicy,
-    hasPrivacyPage,
-    detectedSignals,
-    gapType,
-  };
 }
 
 export function runSeoChecks(site: SiteSnapshot, perf: PerfMetrics): SeoResult {
@@ -131,55 +75,79 @@ export function runSeoChecks(site: SiteSnapshot, perf: PerfMetrics): SeoResult {
   }
 
   /* ---- cookie / privacy controls ---- */
-  const pageText = $("body").text().toLowerCase();
-  const linksText = $("a[href]")
-    .map((_, el) => {
-      const text = $(el).text().trim().toLowerCase();
-      const href = ($(el).attr("href") ?? "").toLowerCase();
-      return `${text} ${href}`;
-    })
-    .get()
-    .join("\n");
-  const scriptsText = $("script[src]")
-    .map((_, el) => ($(el).attr("src") ?? "").toLowerCase())
-    .get()
-    .join("\n");
-  const cookieControls = detectCookieControls(pageText, linksText, scriptsText);
+  const links = $("a[href]")
+    .map((_, el) => ({ text: $(el).text().trim(), href: $(el).attr("href") ?? "" }))
+    .get();
+  const consent = analyzeConsent({
+    html: site.page.html,
+    bodyText: $("body").text(),
+    links,
+    setCookieNames: site.page.setCookieNames,
+  });
 
-  if (!cookieControls.needsControls) {
+  // What we can honestly say from server HTML alone: whether tracking is loaded,
+  // and whether ANY consent tooling left a trace. A banner that only exists after
+  // JavaScript runs is invisible to us, so we never claim "the banner is missing"
+  // when we found consent markup, wording, a CMP vendor or consent mode — and we
+  // stay quiet altogether on a page whose content is client-rendered (or that
+  // served us a bot wall), because there the whole footer is invisible too.
+  if (!consent.needsConsent || consent.hasConsentTooling || !consent.navigable) {
     p.push(passed("seo-cookie-consent"));
   } else {
-    const missing: string[] = [];
-    if (!cookieControls.hasCookieSettings) missing.push("cookie notice/settings");
-    if (!cookieControls.hasCookiePolicy) missing.push("cookie policy page");
-    if (!cookieControls.hasPrivacyPage) missing.push("privacy/GDPR page");
+    f.push(
+      finding("seo-cookie-consent", [
+        ev(
+          `Tracking that needs consent was loaded straight from the HTML: ${consent.trackers.join(", ")}.`,
+          `Přímo v HTML se načítá sledování, které vyžaduje souhlas: ${consent.trackers.join(", ")}.`
+        ),
+        ev(
+          "No consent tool was found in the markup — no known CMP (Cookiebot, OneTrust, Usercentrics, Complianz, …), no consent-mode wiring, no banner container, no accept/reject wording and no scripts held back until consent.",
+          "V HTML nebyl nalezen žádný nástroj pro souhlas – žádná známá lišta (Cookiebot, OneTrust, Usercentrics, Complianz, …), žádné consent mode, žádný kontejner banneru, žádný text pro přijetí/odmítnutí ani skripty pozdržené do udělení souhlasu."
+        ),
+        ...(consent.cookiePolicyLink
+          ? [
+              ev(
+                `The page does link a cookie page (${consent.cookiePolicyLink}), but a link alone is not a consent control.`,
+                `Stránka sice odkazuje na informace o cookies (${consent.cookiePolicyLink}), ale samotný odkaz není nástroj pro souhlas.`
+              ),
+            ]
+          : []),
+        ev(
+          "We read the page without running JavaScript. If your banner is injected at runtime (typically from Google Tag Manager), open the site in a private window and check it yourself — and make sure the tracking above really waits for the visitor's choice.",
+          "Stránku čteme bez spuštění JavaScriptu. Pokud se vaše lišta vykresluje až za běhu (typicky z Google Tag Manageru), otevřete web v anonymním okně a ověřte to sami – a hlavně zkontrolujte, že sledování výše opravdu čeká na volbu návštěvníka."
+        ),
+      ])
+    );
+  }
 
-    const statusText = cookieControls.status === "consent-manager"
-      ? "a consent manager appears to be present"
-      : cookieControls.status === "simple-banner"
-        ? "a basic cookie banner or notice appears to be present"
-        : "no obvious cookie-control UI was detected";
+  if (consent.preConsentCookies.length > 0) {
+    f.push(
+      finding("seo-cookie-preconsent", [
+        ev(
+          `The first response set these tracking cookies before anyone could agree: ${consent.preConsentCookies.join(", ")}.`,
+          `Už první odpověď serveru nastavila tyto sledovací cookies dřív, než mohl kdokoli souhlasit: ${consent.preConsentCookies.join(", ")}.`
+        ),
+        ev(
+          "We sent no cookies and clicked nothing, so these were set with no consent at all.",
+          "Neposlali jsme žádné cookies a na nic neklikli, takže byly nastaveny zcela bez souhlasu."
+        ),
+      ])
+    );
+  } else {
+    p.push(passed("seo-cookie-preconsent"));
+  }
 
-    const gapLabel = cookieControls.gapType === "settings-only"
-      ? "This looks like a settings-control gap"
-      : cookieControls.gapType === "policy-only"
-        ? "This looks like a cookie-policy gap"
-        : cookieControls.gapType === "privacy-only"
-          ? "This looks like a privacy/GDPR-page gap"
-          : "This looks like a broader consent setup gap";
-
-    if (missing.length > 0) {
-      f.push(
-        finding("seo-cookie-consent", [
-          ev(
-            `${gapLabel}. The page appears to use cookies or tracking and ${statusText}, but the required notice/settings control or obvious links to a cookie policy and a privacy/GDPR page were not fully found. Missing: ${missing.join(", ")}. Detected signals: ${cookieControls.detectedSignals.join(", ") || "none"}.`,
-            `${gapLabel.replace("This", "Zdá se").replace("looks", "že jde").replace("a ", "")}. Stránka používá cookies nebo sledování a ${statusText}, ale potřebný prvek pro oznámení/nastavení nebo zjevné odkazy na stránku o cookies a ochranu osobních údajů/GDPR nebyly úplně nalezeny. Chybí: ${missing.join(", ")}. Zjištěné signály: ${cookieControls.detectedSignals.join(", ") || "žádné"}.`
-          ),
-        ])
-      );
-    } else {
-      p.push(passed("seo-cookie-consent"));
-    }
+  if (!consent.privacyPolicyLink && consent.navigable) {
+    f.push(
+      finding("seo-privacy-policy-missing", [
+        ev(
+          `None of the ${links.length} links on this page point to a privacy policy (checked Czech and English wording and URLs: ochrana osobních údajů, zásady zpracování, privacy, GDPR, …).`,
+          `Žádný z ${links.length} odkazů na stránce nevede na zásady ochrany osobních údajů (hledali jsme česky i anglicky, v textu i v URL: ochrana osobních údajů, zásady zpracování, privacy, GDPR, …).`
+        ),
+      ])
+    );
+  } else if (consent.privacyPolicyLink) {
+    p.push(passed("seo-privacy-policy-missing"));
   }
 
   /* ---- headings ---- */

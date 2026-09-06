@@ -111,25 +111,77 @@ export const CATALOG: Record<string, CheckDef> = {
   "seo-cookie-consent": {
     id: "seo-cookie-consent",
     pillar: "seo",
+    roles: ["developer"],
+    impact: 3,
+    effort: 2,
+    // We read the HTML without running JavaScript, so a banner rendered at
+    // runtime is invisible to us — this can only ever be an informed estimate.
+    confidence: "estimated",
+    title: {
+      en: "Tracking loads, but no cookie consent tool was found in the HTML.",
+      cs: "Web načítá sledování, ale v HTML není žádný nástroj pro souhlas s cookies.",
+    },
+    why: {
+      en: "Analytics and advertising scripts may only run in the EU after the visitor agrees. If nothing asks first, every visit is processed without a legal basis — the risk is a fine from the ÚOOÚ, not a lost ranking.",
+      cs: "Analytické a reklamní skripty smí v EU běžet až po souhlasu návštěvníka. Pokud se web nejdřív nezeptá, zpracovává každou návštěvu bez právního základu — hrozí pokuta od ÚOOÚ, ne ztráta pozic ve vyhledávání.",
+    },
+    fix: {
+      en: "Add a consent banner that loads the tracking listed in the evidence only after the visitor agrees — reject must be as easy as accept, and nothing may run before the choice. Either use a CMP (Cookiebot, Usercentrics, CookieYes, Complianz for WordPress) or, if you manage tags in Google Tag Manager, set Google consent mode defaults to denied and fire the tags on the consent update.",
+      cs: "Přidejte lištu souhlasu, která sledování z důkazů spustí až po souhlasu — odmítnout musí být stejně snadné jako přijmout a před volbou nesmí běžet nic. Použijte buď CMP (Cookiebot, Usercentrics, CookieYes, pro WordPress Complianz), nebo pokud spravujete značky v Google Tag Manageru, nastavte výchozí stav Google consent mode na „denied“ a značky spouštějte až na aktualizaci souhlasu.",
+    },
+    passTitle: {
+      en: "Either nothing that needs consent is loaded, or a consent tool is in place.",
+      cs: "Web buď nenačítá nic, co vyžaduje souhlas, nebo má nástroj pro souhlas.",
+    },
+  },
+  "seo-cookie-preconsent": {
+    id: "seo-cookie-preconsent",
+    pillar: "seo",
+    roles: ["developer", "devops"],
+    impact: 3,
+    effort: 2,
+    // Measured: these names came back in Set-Cookie on a request that carried
+    // no cookies and no interaction.
+    confidence: "measured",
+    title: {
+      en: "The server sets tracking cookies before anyone can agree to them.",
+      cs: "Server nastavuje sledovací cookies dřív, než s nimi může kdokoli souhlasit.",
+    },
+    why: {
+      en: "A tracking cookie stored on the very first request cannot have consent behind it — the visitor has not seen the banner yet. This is the version of the problem that is trivial to prove in an inspection, because it happens in the HTTP response itself.",
+      cs: "Sledovací cookie uložená hned při prvním požadavku nemůže mít za sebou souhlas — návštěvník ještě lištu ani neviděl. Právě tuhle variantu problému lze při kontrole snadno doložit, protože se děje přímo v HTTP odpovědi.",
+    },
+    fix: {
+      en: "Set the cookies listed in the evidence only after the visitor has agreed: move them out of the initial response and behind the consent callback. Cookies that are strictly necessary to run the site (session, cart, security token) may stay — the ones listed here are analytics or advertising.",
+      cs: "Cookies z důkazů nastavujte až po souhlasu návštěvníka: přesuňte je z první odpovědi za callback souhlasu. Cookies nezbytně nutné pro provoz webu (session, košík, bezpečnostní token) zůstat mohou — ty vypsané zde jsou analytické nebo reklamní.",
+    },
+    passTitle: {
+      en: "No tracking cookies are set before consent.",
+      cs: "Před souhlasem se nenastavují žádné sledovací cookies.",
+    },
+  },
+  "seo-privacy-policy-missing": {
+    id: "seo-privacy-policy-missing",
+    pillar: "seo",
     roles: ["developer", "copywriter"],
     impact: 2,
     effort: 1,
     confidence: "measured",
     title: {
-      en: "The site appears to need cookie controls, but the required notice, settings and policy pages are missing.",
-      cs: "Web zřejmě potřebuje prvky pro cookies, ale chybí potřebné oznámení, nastavení a stránky s informacemi.",
+      en: "No link to a privacy policy was found on the page.",
+      cs: "Na stránce není odkaz na zásady ochrany osobních údajů.",
     },
     why: {
-      en: "If the site uses analytics, ads or other tracking, visitors usually need a clear cookie notice, a way to change preferences and pages that explain the cookies used and the privacy/GDPR basis.",
-      cs: "Pokud web používá analytiku, reklamy nebo jiné sledování, návštěvníci obvykle potřebují jasné oznámení o cookies, možnost změnit preference a stránky, které vysvětlují používané cookies a základ pro ochranu osobních údajů/GDPR.",
+      en: "Anyone whose data you process — a contact form, an order, analytics — has to be able to find out how, and the usual place people look is a footer link. Google's quality raters and comparison sites treat a missing privacy policy as a trust signal too.",
+      cs: "Každý, čí údaje zpracováváte — kontaktní formulář, objednávka, analytika — musí mít možnost zjistit jak, a lidé to hledají obvykle v patičce. Chybějící zásady navíc berou hodnotitelé kvality Googlu i srovnávače jako signál nedůvěryhodnosti.",
     },
     fix: {
-      en: "Add a visible cookie notice or banner, a link to open or change cookie settings, and dedicated pages for cookie information and privacy/GDPR. If the site does not actually use cookies or tracking, you can skip these elements.",
-      cs: "Přidejte viditelné oznámení nebo banner o cookies, odkaz na otevření nebo změnu nastavení cookies a samostatné stránky o cookies a ochraně osobních údajů/GDPR. Pokud web cookies ani sledování ve skutečnosti nepoužívá, tyto prvky můžete vynechat.",
+      en: "Publish a privacy policy page describing what data you collect, why, for how long and who else sees it, and link it from the footer of every page. Czech sites usually name it “Zásady ochrany osobních údajů” or “Zpracování osobních údajů”.",
+      cs: "Zveřejněte stránku se zásadami ochrany osobních údajů — jaké údaje sbíráte, proč, jak dlouho a kdo další se k nim dostane — a odkazujte na ni z patičky každé stránky. Obvyklé názvy jsou „Zásady ochrany osobních údajů“ nebo „Zpracování osobních údajů“.",
     },
     passTitle: {
-      en: "The site either has clear cookie controls or does not appear to need them.",
-      cs: "Web buď má jasné prvky pro cookies, nebo se zdá, že je nepotřebuje.",
+      en: "The page links to a privacy policy.",
+      cs: "Stránka odkazuje na zásady ochrany osobních údajů.",
     },
   },
   "seo-h1-missing": {
