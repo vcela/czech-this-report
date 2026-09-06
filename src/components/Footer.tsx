@@ -29,6 +29,9 @@ export function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
           <Link href={`/${locale}/about`} className="hover:text-foreground transition-colors">
             {dict.nav.about}
           </Link>
+          <Link href={`/${locale}/privacy`} className="hover:text-foreground transition-colors">
+            {dict.nav.privacy}
+          </Link>
           {STRIPE_DONATE_URL && (
             <a
               href={STRIPE_DONATE_URL}

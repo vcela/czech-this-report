@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import path from "node:path";
 import fs from "node:fs";
 import type { Report } from "./audit/types";
+import { RETENTION } from "./site";
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 
@@ -30,7 +31,28 @@ function getDb(): Database.Database {
       created_at TEXT NOT NULL
     );
   `);
+  // ponytail: pruned once per process start, not on a timer — the box restarts
+  // often enough and a stale row for a few hours breaks no promise. Move to a
+  // cron if the service ever stays up for months.
+  prune(db);
   return db;
+}
+
+/** Enforce the retention published in the privacy policy. */
+function prune(conn: Database.Database): void {
+  const cutoff = (days: number) =>
+    new Date(Date.now() - days * 86_400_000).toISOString();
+  try {
+    conn
+      .prepare("DELETE FROM reports WHERE created_at < ?")
+      .run(cutoff(RETENTION.reportDays));
+    conn
+      .prepare("DELETE FROM leads WHERE created_at < ?")
+      .run(cutoff(RETENTION.leadDays));
+  } catch (error) {
+    // Never let housekeeping take the site down.
+    console.error("Retention prune failed", error);
+  }
 }
 
 export function saveReport(report: Report): void {

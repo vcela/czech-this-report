@@ -2,13 +2,14 @@ import type { Locale } from "./index";
 
 const en = {
   siteName: "Czech Th!s Report",
-  tagline: "Free website audit: AI visibility, SEO & accessibility",
+  tagline: "Free web audit: AI, SEO & accessibility",
 
   nav: {
     home: "New audit",
     methodology: "Methodology",
     guides: "Guides",
     about: "About & contact",
+    privacy: "Privacy policy",
     skipToContent: "Skip to content",
     switchLocale: "Přepnout do češtiny",
     switchLocaleShort: "Čeština",
@@ -18,6 +19,9 @@ const en = {
     heroTitle: "Is your website invisible to Google, AI assistants — or actual people?",
     heroSubtitle:
       "Enter any address and get a free, prioritized report on AI search visibility, SEO and accessibility. In plain language: what's wrong, why it costs you customers, and who can fix it.",
+    // Shorter than the hero copy on purpose: Google truncates around 155 characters.
+    metaDescription:
+      "Free, no-signup audit of any website: AI search visibility, SEO and accessibility — in plain language, with who to task for each fix.",
     urlLabel: "Website address",
     urlPlaceholder: "e.g. your-company.com",
     submit: "Audit my website",
@@ -218,6 +222,11 @@ const en = {
     contactTitle: "Get in touch",
   },
 
+  privacy: {
+    title: "Privacy policy",
+    updated: "Last updated",
+  },
+
   donate: {
     title: "Support this tool",
     text: "The audit is free for everyone and always will be. If it saved you money or a bad decision, you can chip in for server and testing costs.",
@@ -239,13 +248,14 @@ const en = {
 /* Czech — written natively, not machine-translated */
 const cs: typeof en = {
   siteName: "Czech Th!s Report",
-  tagline: "Audit webu zdarma: AI viditelnost, SEO a přístupnost",
+  tagline: "Audit webu zdarma: AI, SEO a přístupnost",
 
   nav: {
     home: "Nový audit",
     methodology: "Metodika",
     guides: "Průvodce",
     about: "O nástroji a kontakt",
+    privacy: "Zásady ochrany osobních údajů",
     skipToContent: "Přeskočit na obsah",
     switchLocale: "Switch to English",
     switchLocaleShort: "English",
@@ -255,6 +265,8 @@ const cs: typeof en = {
     heroTitle: "Je váš web neviditelný pro Google, AI asistenty — nebo pro živé lidi?",
     heroSubtitle:
       "Zadejte libovolnou adresu a dostanete zdarma priorizovaný report o viditelnosti v AI vyhledávání, SEO a přístupnosti. Lidskou řečí: co je špatně, proč vás to stojí zákazníky a kdo to umí spravit.",
+    metaDescription:
+      "Bezplatný audit libovolného webu bez registrace: viditelnost v AI, SEO a přístupnost — lidskou řečí a s tím, koho na opravu zavolat.",
     urlLabel: "Adresa webu",
     urlPlaceholder: "např. vase-firma.cz",
     submit: "Prověřit můj web",
@@ -453,6 +465,11 @@ const cs: typeof en = {
   about: {
     title: "O nástroji",
     contactTitle: "Napište mi",
+  },
+
+  privacy: {
+    title: "Zásady ochrany osobních údajů",
+    updated: "Naposledy aktualizováno",
   },
 
   donate: {

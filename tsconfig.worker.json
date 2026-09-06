@@ -1,0 +1,19 @@
+{
+  // Compiles the audit worker to plain CommonJS for `node dist-worker/worker.js`.
+  // `files` lets tsc follow the import graph itself, so only what the audit
+  // actually needs is emitted — no Next, no React, no path aliases.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "rootDir": "src/lib/audit",
+    "outDir": "dist-worker",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "sourceMap": false,
+    "types": ["node"]
+  },
+  "files": ["src/lib/audit/worker.ts"]
+}

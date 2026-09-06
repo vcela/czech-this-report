@@ -43,6 +43,15 @@ const ARIA_PREFIX_CHECK = "a11y-aria-misuse";
  */
 const MAX_AXE_ELEMENTS = 25_000;
 
+/**
+ * Element count is a poor predictor of axe's cost: a 9.8k-element page full of
+ * links measured 51 s and 680 MB, while a 2.7 MB page with 4.3k elements took
+ * 14 s. So the real guard is wall time — past this we give up on axe and report
+ * the honest "conformance: unknown", instead of letting one page burn CPU and
+ * hold an audit slot. The work dies with the worker process a moment later.
+ */
+const AXE_TIMEOUT_MS = 30_000;
+
 interface AxeViolationLite {
   id: string;
   help: string;
@@ -72,7 +81,7 @@ async function runAxe(site: SiteSnapshot): Promise<AxeViolationLite[] | null> {
     // inject axe into the jsdom window
     window.eval(axeCore.source);
     const axe = (window as unknown as { axe: typeof axeCore }).axe;
-    const results = await axe.run(window.document.documentElement, {
+    const axeRun = axe.run(window.document.documentElement, {
       // rules that need real layout/rendering can't run in jsdom
       rules: {
         "color-contrast": { enabled: false },
@@ -83,6 +92,18 @@ async function runAxe(site: SiteSnapshot): Promise<AxeViolationLite[] | null> {
       resultTypes: ["violations", "passes"],
       elementRef: false,
     });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const results = await Promise.race([
+      // a failed run resolves to null, same as a timeout: both mean "no axe
+      // results", and swallowing it here keeps a late rejection from surfacing
+      // as an unhandled one after the race is already lost
+      axeRun.catch(() => null),
+      new Promise<null>((r) => {
+        timer = setTimeout(() => r(null), AXE_TIMEOUT_MS);
+      }),
+    ]);
+    clearTimeout(timer);
+    if (!results) return null;
     const out = results.violations.map((v) => ({
       id: v.id,
       help: v.help,

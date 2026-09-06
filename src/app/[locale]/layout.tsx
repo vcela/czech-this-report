@@ -29,10 +29,10 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   return {
     metadataBase: new URL(SITE_URL),
     title: {
-      default: `${dict.siteName} — ${dict.tagline}`,
+      default: `${dict.tagline} — ${dict.siteName}`,
       template: `%s | ${dict.siteName}`,
     },
-    description: dict.home.heroSubtitle,
+    description: dict.home.metaDescription,
     alternates: {
       canonical: `/${locale}`,
       languages: { en: "/en", cs: "/cs" },

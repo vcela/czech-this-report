@@ -44,3 +44,4 @@ next-env.d.ts
 data/
 .env
 .tmp-test
+dist-worker

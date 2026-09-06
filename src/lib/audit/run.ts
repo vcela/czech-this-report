@@ -1,4 +1,4 @@
-import { customAlphabet } from "nanoid";
+import { randomBytes } from "node:crypto";
 import { assertPublicHost, fetchSite, normalizeUrl } from "./fetcher";
 import { runSeoChecks } from "./checks/seo";
 import { runAiChecks } from "./checks/ai";
@@ -7,10 +7,14 @@ import { getPerfMetrics } from "./psi";
 import { overallScore, scorePillar, sortFindings } from "./score";
 import type { Report } from "./types";
 
-const newId = customAlphabet(
-  "0123456789abcdefghijklmnopqrstuvwxyz",
-  10
-);
+// Plain node:crypto rather than nanoid, so this module stays require()-able from
+// the audit worker — nanoid v5 is ESM-only and the worker is compiled to CommonJS.
+const ID_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz";
+function newId(): string {
+  let id = "";
+  for (const byte of randomBytes(10)) id += ID_ALPHABET[byte % ID_ALPHABET.length];
+  return id;
+}
 
 export async function runAudit(inputUrl: string, prevId?: string): Promise<Report> {
   const started = Date.now();

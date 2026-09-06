@@ -14,8 +14,8 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   if (!isLocale(locale)) return {};
   const dict = getDict(locale);
   return {
-    title: `${dict.siteName} — ${dict.tagline}`,
-    description: dict.home.heroSubtitle,
+    title: `${dict.tagline} — ${dict.siteName}`,
+    description: dict.home.metaDescription,
     alternates: { canonical: `/${locale}`, languages: { en: "/en", cs: "/cs" } },
   };
 }
@@ -27,9 +27,27 @@ export default async function HomePage(props: Props) {
   const dict = getDict(locale);
   const t = dict.home;
 
+  // ponytail: no logo/sameAs — there is no logo file in the repo and no
+  // confirmed social profiles, and a schema block is worth exactly as much as
+  // the facts in it. Add both here once they exist.
+  const orgId = `${CREATOR.url}#organization`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
+      {
+        "@type": "Organization",
+        "@id": orgId,
+        name: CREATOR.studio,
+        url: CREATOR.url,
+        email: CREATOR.email,
+        founder: { "@type": "Person", name: CREATOR.name, url: CREATOR.url },
+        contactPoint: {
+          "@type": "ContactPoint",
+          contactType: "customer support",
+          email: CREATOR.email,
+          availableLanguage: ["cs", "en"],
+        },
+      },
       {
         "@type": "WebApplication",
         name: dict.siteName,
@@ -38,11 +56,12 @@ export default async function HomePage(props: Props) {
         operatingSystem: "Web",
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
         description: t.heroSubtitle,
+        publisher: { "@id": orgId },
         creator: {
           "@type": "Person",
           name: CREATOR.name,
           url: CREATOR.url,
-          worksFor: { "@type": "Organization", name: CREATOR.studio, url: CREATOR.url },
+          worksFor: { "@id": orgId },
         },
       },
     ],

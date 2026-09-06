@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runAudit, AuditError } from "@/lib/audit/run";
+import { AuditError } from "@/lib/audit/run";
+import { runAuditIsolated } from "@/lib/audit/isolate";
 import { saveReport } from "@/lib/db";
 
 export const maxDuration = 120;
@@ -11,8 +12,9 @@ const MAX_PER_WINDOW = 10;
 
 /**
  * One audit holds a cheerio tree and a full jsdom window at once, so peak
- * memory scales with concurrent audits, not with traffic. Capping in-flight
- * runs is what keeps the container's memory ceiling predictable.
+ * memory scales with concurrent audits, not with traffic. Each one now runs in
+ * its own child process (see isolate.ts), so this cap bounds how many of those
+ * can exist at a time.
  */
 const MAX_CONCURRENT = 2;
 let inFlight = 0;
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   inFlight++;
   try {
-    const report = await runAudit(
+    const report = await runAuditIsolated(
       body.url,
       typeof body.prevId === "string" ? body.prevId.slice(0, 20) : undefined
     );
