@@ -17,6 +17,7 @@ export interface Site {
   verify_token: string;
   verified_at: string | null;
   created_at: string;
+  goal_paths: string;
 }
 
 export interface SiteRow extends Site {
@@ -62,6 +63,18 @@ export function addSite(userId: number, input: string): string {
     "INSERT INTO sites (id, user_id, url, host, verify_token, created_at) VALUES (?, ?, ?, ?, ?, ?)"
   ).run(id, userId, url, host, randomBytes(16).toString("hex"), new Date().toISOString());
   return id;
+}
+
+/** Public lookup for the tracking endpoint: the site id is not a secret, it's in every page's HTML. */
+export function getSiteHost(siteId: string): string | null {
+  const row = getDb().prepare("SELECT host FROM sites WHERE id = ?").get(siteId) as { host: string } | undefined;
+  return row?.host ?? null;
+}
+
+export function setGoals(userId: number, siteId: string, goalPaths: string): void {
+  getDb()
+    .prepare("UPDATE sites SET goal_paths = ? WHERE id = ? AND user_id = ?")
+    .run(goalPaths.slice(0, 2000), siteId, userId);
 }
 
 export function deleteSite(userId: number, siteId: string): void {

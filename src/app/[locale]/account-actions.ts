@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { createSession, destroySession, findUserByEmail, requireUser, verifyPassword } from "@/lib/auth";
 import { isLocale, type Locale } from "@/lib/i18n";
 import { auditSlotFree } from "@/lib/audit/isolate";
-import { addSite, auditSite, deleteSite, getSite, verifySite } from "@/lib/sites";
+import { addSite, auditSite, deleteSite, getSite, setGoals, verifySite } from "@/lib/sites";
 
 const loc = (fd: FormData): Locale => {
   const l = String(fd.get("locale") ?? "");
@@ -69,11 +69,13 @@ async function ownedSite(fd: FormData) {
 export async function verifySiteAction(fd: FormData) {
   const { site, path } = await ownedSite(fd);
   const ok = await verifySite(site);
-  redirect(ok ? path : `${path}?error=verify`);
+  redirect(ok ? `${path}/setup` : `${path}/setup?error=verify`);
 }
 
 export async function auditSiteAction(fd: FormData) {
-  const { site, path } = await ownedSite(fd);
+  const owned = await ownedSite(fd);
+  const site = owned.site;
+  const path = `${owned.path}/audit`;
   if (!auditSlotFree()) redirect(`${path}?error=audit`);
   let failed = false;
   try {
@@ -90,4 +92,10 @@ export async function deleteSiteAction(fd: FormData) {
   const { locale, user, site } = await ownedSite(fd);
   deleteSite(user.id, site.id);
   redirect(`/${locale}/dashboard`);
+}
+
+export async function saveGoalsAction(fd: FormData) {
+  const { user, site, path } = await ownedSite(fd);
+  setGoals(user.id, site.id, String(fd.get("goals") ?? ""));
+  redirect(`${path}/setup?saved=1`);
 }

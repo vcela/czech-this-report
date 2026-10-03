@@ -7,7 +7,8 @@
     "build": "tsc -p tsconfig.worker.json && next build",
     "start": "next start",
     "lint": "eslint",
-    "test:cookies": "tsc src/lib/audit/cookies.ts src/lib/audit/cookies.test.ts --outDir .tmp-test --module commonjs --target es2022 --esModuleInterop --skipLibCheck && node --test .tmp-test"
+    "test:cookies": "tsc src/lib/audit/cookies.ts src/lib/audit/cookies.test.ts --outDir .tmp-test --module commonjs --target es2022 --esModuleInterop --skipLibCheck && node --test .tmp-test",
+    "test:traffic": "tsc src/lib/traffic.ts src/lib/traffic.test.ts --outDir .tmp-test/traffic --module commonjs --target es2022 --esModuleInterop --skipLibCheck && node --test .tmp-test/traffic"
   },
   "dependencies": {
     "axe-core": "^4.12.1",

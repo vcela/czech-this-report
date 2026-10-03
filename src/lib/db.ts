@@ -57,7 +57,35 @@ export function getDb(): Database.Database {
       created_at TEXT NOT NULL,
       PRIMARY KEY (site_id, report_id)
     );
+    -- ponytail: raw events, aggregated at read time. Fine for small sites;
+    -- add daily rollup tables when a site sends millions of rows.
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_id TEXT NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+      ts INTEGER NOT NULL,
+      day TEXT NOT NULL,
+      type TEXT NOT NULL,
+      visitor TEXT NOT NULL,
+      entry INTEGER NOT NULL DEFAULT 0,
+      path TEXT,
+      source TEXT,
+      source_label TEXT,
+      campaign TEXT,
+      query TEXT,
+      name TEXT,
+      value REAL,
+      device TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_events_site_day ON events(site_id, day);
+    CREATE INDEX IF NOT EXISTS idx_events_visitor ON events(site_id, visitor, ts);
+    CREATE TABLE IF NOT EXISTS daily_salt (day TEXT PRIMARY KEY, salt TEXT NOT NULL);
   `);
+  // Columns added after the first release (SQLite has no ADD COLUMN IF NOT EXISTS).
+  try {
+    db.exec("ALTER TABLE sites ADD COLUMN goal_paths TEXT NOT NULL DEFAULT ''");
+  } catch {
+    /* already there */
+  }
   db.pragma("foreign_keys = ON");
   // ponytail: pruned once per process start, not on a timer — the box restarts
   // often enough and a stale row for a few hours breaks no promise. Move to a
@@ -78,6 +106,7 @@ function prune(conn: Database.Database): void {
       )
       .run(cutoff(RETENTION.reportDays));
     conn.prepare("DELETE FROM sessions WHERE expires_at < ?").run(new Date().toISOString());
+    conn.prepare("DELETE FROM events WHERE ts < ?").run(Date.now() - RETENTION.analyticsDays * 86_400_000);
     conn
       .prepare("DELETE FROM leads WHERE created_at < ?")
       .run(cutoff(RETENTION.leadDays));
