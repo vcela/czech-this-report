@@ -18,6 +18,12 @@ export interface Site {
   verified_at: string | null;
   created_at: string;
   goal_paths: string;
+  gsc_property: string | null;
+  indexnow_key: string | null;
+  indexnow_last_at: number | null;
+  bot_key: string | null;
+  geo_prompts: string;
+  brand: string;
 }
 
 export interface SiteRow extends Site {
@@ -60,8 +66,12 @@ export function addSite(userId: number, input: string): string {
   if (existing) return existing.id;
   const id = randomBytes(9).toString("base64url");
   db.prepare(
-    "INSERT INTO sites (id, user_id, url, host, verify_token, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(id, userId, url, host, randomBytes(16).toString("hex"), new Date().toISOString());
+    `INSERT INTO sites (id, user_id, url, host, verify_token, created_at, indexnow_key, bot_key)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id, userId, url, host, randomBytes(16).toString("hex"), new Date().toISOString(),
+    randomBytes(16).toString("hex"), randomBytes(24).toString("base64url")
+  );
   return id;
 }
 
@@ -136,4 +146,51 @@ export function sitesDueForAudit(): Site[] {
          AND COALESCE((SELECT MAX(created_at) FROM site_reports WHERE site_id = s.id), '') < ?`
     )
     .all(cutoff) as Site[];
+}
+
+export function updateSite(
+  userId: number,
+  siteId: string,
+  fields: Partial<Pick<Site, "gsc_property" | "geo_prompts" | "brand">>
+): void {
+  const keys = Object.keys(fields) as (keyof typeof fields)[];
+  if (!keys.length) return;
+  getDb()
+    .prepare(`UPDATE sites SET ${keys.map((k) => `${k} = ?`).join(", ")} WHERE id = ? AND user_id = ?`)
+    .run(...keys.map((k) => fields[k] ?? null), siteId, userId);
+}
+
+/* ------------------------------------------------------------ Competitors */
+
+export interface Competitor {
+  domain: string;
+  reason: string;
+  source: "ai-search" | "geo" | "manual";
+  report: Report | null;
+}
+
+export function listCompetitors(siteId: string): Competitor[] {
+  return (
+    getDb()
+      .prepare("SELECT domain, reason, source, report_id FROM competitors WHERE site_id = ? ORDER BY added_at")
+      .all(siteId) as { domain: string; reason: string; source: Competitor["source"]; report_id: string | null }[]
+  ).map((c) => ({ ...c, report: c.report_id ? getReport(c.report_id) : null }));
+}
+
+export function addCompetitors(siteId: string, list: { domain: string; reason: string }[], source: Competitor["source"]) {
+  const ins = getDb().prepare(
+    "INSERT OR IGNORE INTO competitors (site_id, domain, reason, source, added_at) VALUES (?, ?, ?, ?, ?)"
+  );
+  for (const c of list.slice(0, 10)) ins.run(siteId, c.domain.toLowerCase(), c.reason, source, Date.now());
+}
+
+export function removeCompetitor(siteId: string, domain: string) {
+  getDb().prepare("DELETE FROM competitors WHERE site_id = ? AND domain = ?").run(siteId, domain);
+}
+
+/** Audits a competitor with the same engine, so the comparison is like for like. */
+export async function auditCompetitor(siteId: string, domain: string): Promise<void> {
+  const report = await runAuditIsolated(`https://${domain}`);
+  saveReport(report);
+  getDb().prepare("UPDATE competitors SET report_id = ? WHERE site_id = ? AND domain = ?").run(report.id, siteId, domain);
 }

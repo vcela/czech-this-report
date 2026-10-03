@@ -103,3 +103,13 @@ export function deviceOf(screenWidth: unknown): "mobile" | "tablet" | "desktop" 
   if (!Number.isFinite(w) || w <= 0) return null;
   return w < 768 ? "mobile" : w < 1024 ? "tablet" : "desktop";
 }
+
+/** IPv4 only — the crawler range lists we check against publish IPv4 prefixes. */
+export function ipv4InCidr(ip: string, cidr: string): boolean {
+  const [range, bitsStr] = cidr.split("/");
+  const bits = Number(bitsStr);
+  const toInt = (s: string) => s.split(".").reduce((a, o) => (a << 8) + Number(o), 0) >>> 0;
+  if (!/^\d+\.\d+\.\d+\.\d+$/.test(ip) || !/^\d+\.\d+\.\d+\.\d+$/.test(range)) return false;
+  const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
+  return (toInt(ip) & mask) === (toInt(range) & mask);
+}

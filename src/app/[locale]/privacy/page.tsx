@@ -55,10 +55,20 @@ const content: Record<Locale, { intro: string; sections: { h: string; body: stri
         ],
       },
       {
+        h: "The account area (closed test)",
+        body: [
+          "Signed-in owners can add their own websites. For those sites we store weekly audit reports and, if the owner installs our measuring code, visitor statistics of that website: pages viewed, the referring site, campaign tags, screen size and conversions. IP addresses are not stored — an anonymous visitor is counted through a hash with a salt that is deleted daily; a random identifier is kept in the visitor's browser only after they consent to cookies on that website. For these statistics the website's owner is the controller and we process them on their behalf. They are deleted after 25 months, or immediately when the site is removed.",
+          "If the owner installs the optional crawler log, their server reports visits of search engine and AI robots (robot name, page, response code). The robot's IP address is used only to verify it is genuine and is not stored.",
+          "If the owner connects Google Search Console, we keep an encrypted access key to read their search data and to submit their sitemap. Disconnecting deletes it.",
+        ],
+      },
+      {
         h: "Who else the data reaches",
         body: [
           "Railway (hosting) runs the server and therefore stores the database on our behalf.",
           "Resend (e-mail delivery) transmits messages sent through the contact form.",
+          "Google (Search Console API) — only for owners who connected it, to read their own search data.",
+          "OpenAI — in the account area only, it receives the public content of the owner's homepage, their questions, and search terms from their statistics, to check citations in ChatGPT and suggest topics. No visitor data is sent.",
           "Google PageSpeed Insights receives the address you submitted — that is how the loading-speed measurement is taken. Nothing about you personally is sent with it.",
           "Nobody else. We do not sell data, share it for advertising, or use it to train anything.",
         ],
@@ -108,10 +118,20 @@ const content: Record<Locale, { intro: string; sections: { h: string; body: stri
         ],
       },
       {
+        h: "Účty (uzavřené testování)",
+        body: [
+          "Přihlášení vlastníci si mohou přidat své weby. U nich ukládáme týdenní reporty z auditů a — pokud vlastník vloží náš měřicí kód — statistiky návštěvnosti daného webu: zobrazené stránky, web, ze kterého návštěvník přišel, značky kampaní, velikost obrazovky a konverze. IP adresy neukládáme — anonymního návštěvníka počítáme přes otisk se solí, která se každý den maže; náhodný identifikátor se v prohlížeči návštěvníka drží až poté, co na daném webu souhlasí s cookies. U těchto statistik je správcem vlastník webu a my je zpracováváme jeho jménem. Mažou se po 25 měsících, nebo hned po odebrání webu.",
+          "Pokud vlastník nainstaluje volitelný záznam robotů, jeho server nám hlásí návštěvy robotů vyhledávačů a AI (název robota, stránka, kód odpovědi). IP adresu robota použijeme jen k ověření, že je pravý, a neukládáme ji.",
+          "Pokud vlastník připojí Google Search Console, uchováváme šifrovaný přístupový klíč ke čtení jeho dat z vyhledávání a k odeslání sitemapy. Odpojením se smaže.",
+        ],
+      },
+      {
         h: "Ke komu se údaje dostanou",
         body: [
           "Railway (hosting) provozuje server, a tím pádem pro nás uchovává databázi.",
           "Resend (doručování e-mailů) přenáší zprávy odeslané z kontaktního formuláře.",
+          "Google (Search Console API) — jen u vlastníků, kteří ho připojili, ke čtení jejich vlastních dat z vyhledávání.",
+          "OpenAI — jen v účtech; dostává veřejný obsah úvodní stránky webu vlastníka, jeho otázky a hledané výrazy z jeho statistik, abychom ověřili citace v ChatGPT a navrhli témata. Data o návštěvnících se neposílají.",
           "Google PageSpeed Insights dostane adresu, kterou jste zadali — tak se měří rychlost načítání. Nic o vás osobně se s ní neposílá.",
           "Nikdo další. Údaje neprodáváme, nesdílíme je pro reklamu ani na nich nic netrénujeme.",
         ],

@@ -34,6 +34,8 @@ export default async function SiteLayout(props: {
         base={base}
         tabs={[
           { href: "", label: t.tabs.traffic },
+          { href: "/search", label: t.tabs.search },
+          { href: "/ai", label: t.tabs.ai },
           { href: "/audit", label: t.tabs.health },
           { href: "/setup", label: t.tabs.setup },
         ]}

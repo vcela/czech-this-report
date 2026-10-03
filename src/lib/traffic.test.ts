@@ -1,7 +1,7 @@
 /** Run with: npm run test:traffic */
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classify } from "./traffic";
+import { classify, ipv4InCidr } from "./traffic";
 
 const SITE = "example.cz";
 const kind = (url: string, ref: string) => classify(url, ref, SITE).kind;
@@ -37,4 +37,13 @@ test("on-site search query and clean path", () => {
   assert.equal(c.query, "údržba webu");
   assert.equal(c.path, "/hledani");
   assert.equal(c.campaign, "podzim");
+});
+
+test("crawler IP ranges", () => {
+  assert.equal(ipv4InCidr("132.196.86.17", "132.196.86.0/24"), true);
+  assert.equal(ipv4InCidr("132.196.87.1", "132.196.86.0/24"), false);
+  assert.equal(ipv4InCidr("104.210.140.140", "104.210.140.128/28"), true);
+  assert.equal(ipv4InCidr("104.210.140.144", "104.210.140.128/28"), false);
+  assert.equal(ipv4InCidr("44.208.221.197", "44.208.221.197/32"), true);
+  assert.equal(ipv4InCidr("2001:db8::1", "44.208.221.197/32"), false);
 });

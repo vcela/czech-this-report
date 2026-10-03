@@ -252,3 +252,63 @@ export function getStats(siteId: string, range: Range, goalPaths: string[]): Sta
     consentedShare: consent.n ? (consent.c ?? 0) / consent.n : 0,
   };
 }
+
+/* ------------------------------------------------------- Campaign costs */
+
+export function setCampaignCost(siteId: string, campaign: string, amount: number | null) {
+  const db = getDb();
+  if (amount === null) db.prepare("DELETE FROM campaign_costs WHERE site_id = ? AND campaign = ?").run(siteId, campaign);
+  else
+    db.prepare("INSERT OR REPLACE INTO campaign_costs (site_id, campaign, amount) VALUES (?, ?, ?)").run(
+      siteId,
+      campaign.slice(0, 100),
+      amount
+    );
+}
+
+export interface CampaignTotal {
+  campaign: string;
+  cost: number | null;
+  visits: number;
+  conversions: number;
+  revenue: number;
+}
+
+/**
+ * All-time numbers per campaign. Spend is entered as one total per campaign,
+ * so it is compared with all-time results, never with a date range.
+ */
+export function campaignTotals(siteId: string, goalPaths: string[]): CampaignTotal[] {
+  const db = getDb();
+  const conv = conversionWhere(goalPaths);
+  const visits = db
+    .prepare(
+      `SELECT campaign, COUNT(*) visits FROM events WHERE site_id = ? AND type='pageview' AND entry=1 AND campaign IS NOT NULL GROUP BY campaign`
+    )
+    .all(siteId) as { campaign: string; visits: number }[];
+  const conversions = new Map(
+    (
+      db
+        .prepare(
+          `SELECT ${ENTRY_OF("campaign")} k, COUNT(*) n, COALESCE(SUM(CASE WHEN c.name='purchase' THEN c.value END),0) revenue
+           FROM events c WHERE c.site_id = ? AND ${conv.sql} GROUP BY k`
+        )
+        .all(siteId, ...conv.params) as { k: string | null; n: number; revenue: number }[]
+    ).map((r) => [r.k ?? "", r])
+  );
+  const costs = new Map(
+    (db.prepare("SELECT campaign, amount FROM campaign_costs WHERE site_id = ?").all(siteId) as { campaign: string; amount: number }[]).map(
+      (r) => [r.campaign, r.amount]
+    )
+  );
+  const names = new Set([...visits.map((v) => v.campaign), ...costs.keys()]);
+  return [...names]
+    .map((campaign) => ({
+      campaign,
+      cost: costs.get(campaign) ?? null,
+      visits: visits.find((v) => v.campaign === campaign)?.visits ?? 0,
+      conversions: conversions.get(campaign)?.n ?? 0,
+      revenue: conversions.get(campaign)?.revenue ?? 0,
+    }))
+    .sort((a, b) => b.visits - a.visits);
+}

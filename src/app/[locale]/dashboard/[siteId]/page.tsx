@@ -4,8 +4,16 @@ import { notFound } from "next/navigation";
 import { isLocale, type Locale } from "@/lib/i18n";
 import { getDict } from "@/lib/i18n/dictionaries";
 import { requireUser } from "@/lib/auth";
-import { getSite } from "@/lib/sites";
-import { RANGES, getStats, parseGoals, type Range, type Stats } from "@/lib/analytics";
+import { getSite, siteHistory } from "@/lib/sites";
+import { RANGES, campaignTotals, getStats, parseGoals, type Range, type Stats } from "@/lib/analytics";
+import { getSearchSummaryForSite, googleConfigured } from "@/lib/google";
+import { indexRows } from "@/lib/indexing";
+import { botSummary } from "@/lib/bots";
+import { aiConfigured, citedInstead, geoHistory, parsePrompts } from "@/lib/ai";
+import { recommend } from "@/lib/recommend";
+import { campaignCostAction } from "../../account-actions";
+import { SubmitButton } from "@/components/account/Forms";
+import { Hidden, Metric, Table, fill } from "@/components/account/Ui";
 
 export const dynamic = "force-dynamic";
 
@@ -39,17 +47,6 @@ function Delta({ curr, prev, t }: { curr: number; prev: number; t: T }) {
   );
 }
 
-function Metric({ label, value, help, extra }: { label: string; value: string; help: string; extra?: React.ReactNode }) {
-  return (
-    <div className="rounded-xl bg-surface border border-border p-4">
-      <p className="text-sm text-muted">{label}</p>
-      <p className="text-3xl font-bold mt-1">{value}</p>
-      {extra && <p className="text-xs mt-1">{extra}</p>}
-      <p className="text-xs text-muted mt-2 leading-relaxed">{help}</p>
-    </div>
-  );
-}
-
 /** Every day of the period, zeros included, so gaps read as gaps. */
 function Bars({ stats, t, locale }: { stats: Stats; t: T; locale: Locale }) {
   const byDay = new Map(stats.daily.map((d) => [d.day, d.visitors]));
@@ -79,47 +76,7 @@ function Bars({ stats, t, locale }: { stats: Stats; t: T; locale: Locale }) {
   );
 }
 
-function Table({
-  title,
-  empty,
-  head,
-  rows,
-}: {
-  title: string;
-  empty: string;
-  head: string[];
-  rows: React.ReactNode[][];
-}) {
-  return (
-    <section className="rounded-xl bg-surface border border-border p-4 sm:p-5">
-      <h2 className="font-semibold mb-3">{title}</h2>
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted">{empty}</p>
-      ) : (
-        <table className="w-full text-sm">
-          <thead className="text-muted">
-            <tr>
-              {head.map((h, i) => (
-                <th key={h} scope="col" className={`py-1.5 font-medium ${i ? "text-right pl-3" : "text-left"}`}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((r, i) => (
-              <tr key={i}>
-                {r.map((c, j) => (
-                  <td key={j} className={`py-1.5 ${j ? "text-right pl-3 whitespace-nowrap" : "break-all"}`}>{c}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </section>
-  );
-}
-
-export default async function TrafficPage(props: Props) {
+export default async function OverviewPage(props: Props) {
   const { locale, siteId } = await props.params;
   if (!isLocale(locale)) notFound();
   const user = await requireUser(locale);
@@ -127,23 +84,67 @@ export default async function TrafficPage(props: Props) {
   if (!site) notFound();
   const dict = getDict(locale);
   const t = dict.account.traffic;
+  const r = dict.account.recs;
   const { range: rawRange } = await props.searchParams;
   const range = (RANGES as readonly number[]).includes(Number(rawRange)) ? (Number(rawRange) as Range) : 30;
-  const stats = getStats(site.id, range, parseGoals(site.goal_paths));
+  const goals = parseGoals(site.goal_paths);
+  const stats = getStats(site.id, range, goals);
   const base = `/${locale}/dashboard/${site.id}`;
   const num = new Intl.NumberFormat(locale);
   const pct = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 1 });
   const czk = new Intl.NumberFormat(locale, { style: "currency", currency: "CZK", maximumFractionDigits: 0 });
   const { current: c, previous: p } = stats;
 
+  // Recommendations always look at the last 30 days, whatever period is shown.
+  const stats30 = range === 30 ? stats : getStats(site.id, 30, goals);
+  const gsc = await getSearchSummaryForSite(user.id, site, 28);
+  const geoLatest = geoHistory(site.id, 1)[0];
+  const campaigns = campaignTotals(site.id, goals);
+  const recs = recommend({
+    stats: stats30,
+    report: siteHistory(site.id)[0] ?? null,
+    gsc,
+    googleReady: !googleConfigured() || !!site.gsc_property,
+    aiReady: aiConfigured(),
+    hasPrompts: parsePrompts(site.geo_prompts).length > 0,
+    index: indexRows(site.id),
+    bots: botSummary(site.id),
+    geo: geoLatest,
+    geoTopRival: citedInstead(geoLatest, site.host)[0]?.domain ?? null,
+    campaigns,
+  });
+  const toneCls = { fix: "text-score-red", idea: "text-accent", setup: "text-score-orange" };
+
+  const recBox = (
+    <section aria-labelledby="recs-h" className="rounded-xl border border-accent/40 bg-surface p-5 mb-8">
+      <h2 id="recs-h" className="text-lg font-semibold mb-3">{r.title}</h2>
+      {recs.length === 0 ? (
+        <p className="text-muted">{r.empty}</p>
+      ) : (
+        <ul className="divide-y divide-border">
+          {recs.map((x) => (
+            <li key={x.key} className="flex flex-wrap items-start gap-x-4 gap-y-1 py-2.5">
+              <span className={`text-xs font-semibold uppercase tracking-wide w-24 shrink-0 pt-0.5 ${toneCls[x.tone]}`}>{r.tones[x.tone]}</span>
+              <span className="flex-1 min-w-60">{fill(r[x.key], Object.fromEntries(Object.entries(x.params).map(([k, v]) => [k, typeof v === "number" ? num.format(v) : v])))}</span>
+              <Link href={base + x.tab} className="text-sm text-accent hover:underline">{r.open} →</Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+
   if (!stats.hasAnyData) {
     return (
-      <div className="rounded-xl border border-border bg-surface p-6">
-        <h2 className="text-xl font-semibold mb-2">{t.noDataTitle}</h2>
-        <p className="text-muted mb-5">{t.noDataText}</p>
-        <Link href={`${base}/setup`} className="inline-block rounded-lg bg-accent text-accent-contrast font-semibold px-5 py-2.5 hover:bg-accent-strong">
-          {t.noDataCta}
-        </Link>
+      <div>
+        {recBox}
+        <div className="rounded-xl border border-border bg-surface p-6">
+          <h2 className="text-xl font-semibold mb-2">{t.noDataTitle}</h2>
+          <p className="text-muted mb-5">{t.noDataText}</p>
+          <Link href={`${base}/setup`} className="inline-block rounded-lg bg-accent text-accent-contrast font-semibold px-5 py-2.5 hover:bg-accent-strong">
+            {t.noDataCta}
+          </Link>
+        </div>
       </div>
     );
   }
@@ -164,19 +165,21 @@ export default async function TrafficPage(props: Props) {
 
   return (
     <div>
+      {recBox}
+
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <p className="text-lg max-w-2xl">{summary}</p>
         <nav aria-label={t.rangeLabel} className="flex gap-1">
-          {RANGES.map((r) => (
+          {RANGES.map((x) => (
             <Link
-              key={r}
-              href={`${base}?range=${r}`}
-              aria-current={r === range ? "page" : undefined}
+              key={x}
+              href={`${base}?range=${x}`}
+              aria-current={x === range ? "page" : undefined}
               className={`rounded-md px-3 py-1.5 text-sm border transition-colors ${
-                r === range ? "border-accent text-accent font-semibold" : "border-border text-muted hover:text-foreground"
+                x === range ? "border-accent text-accent font-semibold" : "border-border text-muted hover:text-foreground"
               }`}
             >
-              {t.ranges[r]}
+              {t.ranges[x]}
             </Link>
           ))}
         </nav>
@@ -240,16 +243,6 @@ export default async function TrafficPage(props: Props) {
           rows={stats.goals.map((g) => [g.name, num.format(g.count)])}
         />
         <Table
-          title={t.campaignsTitle}
-          empty={t.campaignsEmpty}
-          head={[t.campaign, t.visits, t.conversions]}
-          rows={stats.campaigns.map((x) => [
-            x.campaign,
-            num.format(x.visits),
-            x.revenue > 0 ? `${num.format(x.conversions)} · ${czk.format(x.revenue)}` : num.format(x.conversions),
-          ])}
-        />
-        <Table
           title={t.devicesTitle}
           empty={t.emptyPeriod}
           head={[t.devicesTitle, t.visitors]}
@@ -257,6 +250,38 @@ export default async function TrafficPage(props: Props) {
             t.devices[x.device] ?? x.device,
             `${num.format(x.visitors)} (${pct.format(x.visitors / totalDeviceVisitors)})`,
           ])}
+        />
+      </div>
+
+      <div className="mt-4">
+        <Table
+          id="campaigns"
+          title={t.campaignsTitle}
+          empty={t.campaignsEmpty}
+          head={[t.campaign, t.visits, t.conversions, t.cost, t.costPerConversion]}
+          rows={campaigns.map((x) => [
+            <span key="n">
+              {x.campaign}
+              {x.revenue > 0 && <span className="block text-xs text-muted">{t.revenue}: {czk.format(x.revenue)}</span>}
+            </span>,
+            num.format(x.visits),
+            num.format(x.conversions),
+            <form key="f" action={campaignCostAction} className="flex justify-end gap-2">
+              <Hidden locale={locale} siteId={site.id} />
+              <input type="hidden" name="campaign" value={x.campaign} />
+              <label className="sr-only" htmlFor={`cost-${x.campaign}`}>{`${t.cost} — ${x.campaign}`}</label>
+              <input
+                id={`cost-${x.campaign}`}
+                name="amount"
+                inputMode="decimal"
+                defaultValue={x.cost ?? ""}
+                className="w-24 rounded-md border border-border bg-surface-2 px-2 py-1 text-right"
+              />
+              <SubmitButton variant="secondary">{t.costSave}</SubmitButton>
+            </form>,
+            x.cost && x.conversions ? czk.format(x.cost / x.conversions) : "—",
+          ])}
+          footer={campaigns.length ? <p className="text-xs text-muted mt-3">{t.costNote}</p> : null}
         />
       </div>
 
