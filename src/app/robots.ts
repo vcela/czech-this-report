@@ -7,8 +7,11 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        // reports are private-by-link
-        disallow: ["/en/report/", "/cs/report/", "/api/"],
+        // reports are private-by-link; the account area is behind a login
+        disallow: [
+          "/en/report/", "/cs/report/", "/api/",
+          "/en/dashboard", "/cs/dashboard", "/en/login", "/cs/login",
+        ],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

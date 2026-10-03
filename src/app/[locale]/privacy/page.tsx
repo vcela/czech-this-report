@@ -9,7 +9,7 @@ interface Props {
 }
 
 /** Date this policy text was last edited. Bump it whenever the copy changes. */
-const UPDATED = "2026-09-06";
+const UPDATED = "2026-10-03";
 
 const reportMonths = Math.round(RETENTION.reportDays / 30);
 const leadYears = Math.round(RETENTION.leadDays / 365);
@@ -35,7 +35,7 @@ const content: Record<Locale, { intro: string; sections: { h: string; body: stri
         body: [
           "When you run an audit we fetch the address you entered and everything publicly available at it: the page HTML, robots.txt, sitemap.xml, llms.txt and the HTTP response headers. We only read; nothing on the audited site is changed.",
           "The resulting report is stored under a random identifier and is readable by anyone who has the link. It is not listed anywhere on this site and search engines are asked not to index it (robots.txt), but treat the link as semi-public and share it accordingly.",
-          `Reports are deleted automatically ${reportMonths} months after they are created. If you want one removed sooner, send us the link.`,
+          `Reports are deleted automatically ${reportMonths} months after they are created. If you want one removed sooner, send us the link. Exception: reports of a site registered in a signed-in account are its history and are kept for as long as the site stays in the account; after it is removed, the normal period applies.`,
         ],
       },
       {
@@ -48,7 +48,8 @@ const content: Record<Locale, { intro: string; sections: { h: string; body: stri
       {
         h: "What we do not do",
         body: [
-          "This site sets no cookies, runs no analytics, no advertising pixels and no third-party tracking of any kind. The fonts are served from our own server, not from Google Fonts.",
+          "This site runs no analytics, no advertising pixels and no third-party tracking of any kind. The fonts are served from our own server, not from Google Fonts.",
+          "The only cookie is a sign-in cookie, and it is set only if you sign in to the account area (currently a closed test). It holds a random session key, is strictly necessary for staying signed in, and expires after 30 days or when you sign out.",
           "Your IP address is held in the server's memory for a few minutes purely to enforce the rate limit (a cap of 10 audits per 10 minutes). It is never written to a database and disappears when the server restarts.",
           "The “mark as resolved” ticks in a report are saved in your own browser (localStorage). They never reach our server and we cannot read them.",
         ],
@@ -87,7 +88,7 @@ const content: Record<Locale, { intro: string; sections: { h: string; body: stri
         body: [
           "Když spustíte audit, stáhneme zadanou adresu a všechno, co je na ní veřejně dostupné: HTML stránky, robots.txt, sitemap.xml, llms.txt a hlavičky HTTP odpovědi. Pouze čteme; na prověřovaném webu se nic nemění.",
           "Výsledný report se uloží pod náhodným identifikátorem a přečte si ho každý, kdo má odkaz. Nikde na tomhle webu ho nevypisujeme a vyhledávače žádáme, aby ho neindexovaly (robots.txt), ale berte ten odkaz jako polověřejný a podle toho ho sdílejte.",
-          `Reporty se automaticky mažou ${reportMonths} měsíců od vytvoření. Pokud chcete některý smazat dřív, pošlete nám na něj odkaz.`,
+          `Reporty se automaticky mažou ${reportMonths} měsíců od vytvoření. Pokud chcete některý smazat dřív, pošlete nám na něj odkaz. Výjimka: reporty webu přidaného do přihlášeného účtu tvoří jeho historii a uchováváme je, dokud je web v účtu; po jeho odebrání platí běžná lhůta.`,
         ],
       },
       {
@@ -100,7 +101,8 @@ const content: Record<Locale, { intro: string; sections: { h: string; body: stri
       {
         h: "Co naopak neděláme",
         body: [
-          "Tenhle web nenastavuje žádné cookies, neběží na něm analytika, reklamní pixely ani jakékoli sledování třetích stran. Písma servírujeme z vlastního serveru, ne z Google Fonts.",
+          "Na tomhle webu neběží analytika, reklamní pixely ani jakékoli sledování třetích stran. Písma servírujeme z vlastního serveru, ne z Google Fonts.",
+          "Jediná cookie je přihlašovací a vzniká jen tehdy, když se přihlásíte do účtu (zatím v uzavřeném testování). Obsahuje náhodný klíč relace, je nezbytná pro to, abyste zůstali přihlášení, a zaniká po 30 dnech nebo odhlášením.",
           "Vaši IP adresu držíme několik minut v paměti serveru, a to výhradně kvůli omezení počtu požadavků (limit 10 auditů za 10 minut). Nikdy se nezapisuje do databáze a s restartem serveru mizí.",
           "Odškrtnutí „vyřešeno“ v reportu se ukládá ve vašem prohlížeči (localStorage). Na náš server se nikdy nedostane a nemůžeme si ho přečíst.",
         ],

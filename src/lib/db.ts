@@ -8,7 +8,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 
 let db: Database.Database | null = null;
 
-function getDb(): Database.Database {
+export function getDb(): Database.Database {
   if (db) return db;
   fs.mkdirSync(DATA_DIR, { recursive: true });
   db = new Database(path.join(DATA_DIR, "reports.db"));
@@ -30,7 +30,35 @@ function getDb(): Database.Database {
       message TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS sessions (
+      token_hash TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS sites (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      url TEXT NOT NULL,
+      host TEXT NOT NULL,
+      verify_token TEXT NOT NULL,
+      verified_at TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE (user_id, host)
+    );
+    CREATE TABLE IF NOT EXISTS site_reports (
+      site_id TEXT NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+      report_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (site_id, report_id)
+    );
   `);
+  db.pragma("foreign_keys = ON");
   // ponytail: pruned once per process start, not on a timer — the box restarts
   // often enough and a stale row for a few hours breaks no promise. Move to a
   // cron if the service ever stays up for months.
@@ -44,8 +72,12 @@ function prune(conn: Database.Database): void {
     new Date(Date.now() - days * 86_400_000).toISOString();
   try {
     conn
-      .prepare("DELETE FROM reports WHERE created_at < ?")
+      // Reports of a registered site are its history; they live as long as the site does.
+      .prepare(
+        "DELETE FROM reports WHERE created_at < ? AND id NOT IN (SELECT report_id FROM site_reports)"
+      )
       .run(cutoff(RETENTION.reportDays));
+    conn.prepare("DELETE FROM sessions WHERE expires_at < ?").run(new Date().toISOString());
     conn
       .prepare("DELETE FROM leads WHERE created_at < ?")
       .run(cutoff(RETENTION.leadDays));

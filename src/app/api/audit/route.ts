@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AuditError } from "@/lib/audit/run";
-import { runAuditIsolated } from "@/lib/audit/isolate";
+import { auditSlotFree, runAuditIsolated } from "@/lib/audit/isolate";
 import { saveReport } from "@/lib/db";
 
 export const maxDuration = 120;
@@ -9,15 +9,6 @@ export const maxDuration = 120;
 const hits = new Map<string, { count: number; ts: number }>();
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_PER_WINDOW = 10;
-
-/**
- * One audit holds a cheerio tree and a full jsdom window at once, so peak
- * memory scales with concurrent audits, not with traffic. Each one now runs in
- * its own child process (see isolate.ts), so this cap bounds how many of those
- * can exist at a time.
- */
-const MAX_CONCURRENT = 2;
-let inFlight = 0;
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
@@ -35,7 +26,8 @@ export async function POST(req: NextRequest) {
     hits.set(ip, { count: 1, ts: now });
   }
 
-  if (inFlight >= MAX_CONCURRENT) {
+  // concurrency cap lives in isolate.ts (shared with scheduled site audits)
+  if (!auditSlotFree()) {
     // the client already renders `rate-limit` as "try again in a moment"
     return NextResponse.json({ error: "rate-limit" }, { status: 429 });
   }
@@ -50,7 +42,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid-url" }, { status: 400 });
   }
 
-  inFlight++;
   try {
     const report = await runAuditIsolated(
       body.url,
@@ -68,7 +59,5 @@ export async function POST(req: NextRequest) {
     }
     // fetch failures (DNS, timeout, refused)
     return NextResponse.json({ error: "unreachable" }, { status: 422 });
-  } finally {
-    inFlight--;
   }
 }

@@ -29,6 +29,9 @@ export function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
           <Link href={`/${locale}/about`} className="hover:text-foreground transition-colors">
             {dict.nav.about}
           </Link>
+          <Link href={`/${locale}/dashboard`} className="hover:text-foreground transition-colors">
+            {dict.account.footerLink}
+          </Link>
           <Link href={`/${locale}/privacy`} className="hover:text-foreground transition-colors">
             {dict.nav.privacy}
           </Link>
