@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import path from "node:path";
 import fs from "node:fs";
+import { randomBytes, scryptSync } from "node:crypto";
 import type { Report } from "./audit/types";
 import { RETENTION } from "./site";
 
@@ -162,11 +163,35 @@ export function getDb(): Database.Database {
   db.exec(`UPDATE sites SET indexnow_key = lower(hex(randomblob(16))) WHERE indexnow_key IS NULL;
            UPDATE sites SET bot_key = lower(hex(randomblob(24))) WHERE bot_key IS NULL;`);
   db.pragma("foreign_keys = ON");
+  bootstrapAdmin(db);
   // ponytail: pruned once per process start, not on a timer — the box restarts
   // often enough and a stale row for a few hours breaks no promise. Move to a
   // cron if the service ever stays up for months.
   prune(db);
   return db;
+}
+
+/**
+ * First account from ADMIN_EMAIL / ADMIN_PASSWORD, so a fresh deploy needs no
+ * shell. Only while no account exists — it never overwrites a password, so
+ * the variables are harmless if left set, but best removed after first login.
+ * Hash format matches verifyPassword in auth.ts and scripts/create-user.mjs.
+ */
+function bootstrapAdmin(conn: Database.Database): void {
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD;
+  if (!email || !password) return;
+  if (password.length < 12) {
+    console.error("ADMIN_PASSWORD must be at least 12 characters; no account created.");
+    return;
+  }
+  if (conn.prepare("SELECT 1 FROM users LIMIT 1").get()) return;
+  const salt = randomBytes(16);
+  const hash = `scrypt$${salt.toString("hex")}$${scryptSync(password, salt, 64).toString("hex")}`;
+  conn
+    .prepare("INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)")
+    .run(email, hash, new Date().toISOString());
+  console.log(`Created the first account for ${email}`);
 }
 
 /** Enforce the retention published in the privacy policy. */
