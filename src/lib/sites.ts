@@ -118,10 +118,10 @@ function markVerified(siteId: string): true {
   return true;
 }
 
-export function siteHistory(siteId: string): Report[] {
+export function siteHistory(siteId: string, limit = 52): Report[] {
   const ids = getDb()
-    .prepare("SELECT report_id FROM site_reports WHERE site_id = ? ORDER BY created_at DESC LIMIT 52")
-    .all(siteId) as { report_id: string }[];
+    .prepare("SELECT report_id FROM site_reports WHERE site_id = ? ORDER BY created_at DESC LIMIT ?")
+    .all(siteId, limit) as { report_id: string }[];
   return ids.map((r) => getReport(r.report_id)).filter((r): r is Report => r !== null);
 }
 

@@ -4,13 +4,10 @@ import { notFound } from "next/navigation";
 import { isLocale, type Locale } from "@/lib/i18n";
 import { getDict } from "@/lib/i18n/dictionaries";
 import { requireUser } from "@/lib/auth";
-import { getSite, siteHistory } from "@/lib/sites";
-import { RANGES, campaignTotals, getStats, parseGoals, type Range, type Stats } from "@/lib/analytics";
-import { getSearchSummaryForSite, googleConfigured } from "@/lib/google";
-import { indexRows } from "@/lib/indexing";
-import { botSummary } from "@/lib/bots";
-import { aiConfigured, citedInstead, geoHistory, parsePrompts } from "@/lib/ai";
+import { getSite } from "@/lib/sites";
+import { RANGES, getStats, parseGoals, type Range, type Stats } from "@/lib/analytics";
 import { recommend } from "@/lib/recommend";
+import { recInput } from "@/lib/portfolio";
 import { campaignCostAction } from "../../account-actions";
 import { SubmitButton } from "@/components/account/Forms";
 import { Hidden, Metric, Table, fill } from "@/components/account/Ui";
@@ -97,22 +94,9 @@ export default async function OverviewPage(props: Props) {
 
   // Recommendations always look at the last 30 days, whatever period is shown.
   const stats30 = range === 30 ? stats : getStats(site.id, 30, goals);
-  const gsc = await getSearchSummaryForSite(user.id, site, 28);
-  const geoLatest = geoHistory(site.id, 1)[0];
-  const campaigns = campaignTotals(site.id, goals);
-  const recs = recommend({
-    stats: stats30,
-    report: siteHistory(site.id)[0] ?? null,
-    gsc,
-    googleReady: !googleConfigured() || !!site.gsc_property,
-    aiReady: aiConfigured(),
-    hasPrompts: parsePrompts(site.geo_prompts).length > 0,
-    index: indexRows(site.id),
-    bots: botSummary(site.id),
-    geo: geoLatest,
-    geoTopRival: citedInstead(geoLatest, site.host)[0]?.domain ?? null,
-    campaigns,
-  });
+  const input = await recInput(user.id, site, stats30);
+  const campaigns = input.campaigns;
+  const recs = recommend(input);
   const toneCls = { fix: "text-score-red", idea: "text-accent", setup: "text-score-orange" };
 
   const recBox = (
