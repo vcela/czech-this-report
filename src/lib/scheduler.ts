@@ -64,6 +64,9 @@ export function startScheduler(): void {
       }
       await each("index check", dueForInspection(), (s) => runInspection(s, s.user_id));
       if (aiConfigured()) await each("AI citation check", dueForGeo(), runGeoCheck);
+    } catch (e) {
+      // An unhandled rejection from a timer would kill the whole web process.
+      console.error("Scheduler tick failed", e);
     } finally {
       running = false;
     }
