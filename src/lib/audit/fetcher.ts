@@ -140,7 +140,7 @@ async function fetchPage(url: string): Promise<FetchedPage> {
   };
 }
 
-async function fetchTextIfOk(url: string): Promise<{ text: string | null; status: number | null }> {
+export async function fetchTextIfOk(url: string): Promise<{ text: string | null; status: number | null }> {
   try {
     const res = await timedFetch(url, undefined, 8000);
     if (!res.ok) return { text: null, status: res.status };
@@ -151,7 +151,7 @@ async function fetchTextIfOk(url: string): Promise<{ text: string | null; status
   }
 }
 
-function extractSitemapsFromRobots(robots: string, origin: string): string[] {
+export function extractSitemapsFromRobots(robots: string, origin: string): string[] {
   const out: string[] = [];
   for (const line of robots.split(/\r?\n/)) {
     const m = line.match(/^\s*sitemap:\s*(\S+)/i);

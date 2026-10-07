@@ -27,8 +27,24 @@ const CHILD_TIMEOUT_MS = 150_000;
  * there — that is `next dev`, where the tsc step has not run.
  */
 export async function runAuditIsolated(url: string, prevId?: string): Promise<Report> {
-  if (!fs.existsSync(WORKER)) return runAudit(url, prevId);
+  inFlight++;
+  try {
+    return fs.existsSync(WORKER) ? await runInChild(url, prevId) : await runAudit(url, prevId);
+  } finally {
+    inFlight--;
+  }
+}
 
+/**
+ * One audit holds a cheerio tree and a full jsdom window at once, so peak
+ * memory scales with concurrent audits. Shared by the public API and the
+ * scheduled site audits, so together they never exceed this many children.
+ */
+const MAX_CONCURRENT = 2;
+let inFlight = 0;
+export const auditSlotFree = () => inFlight < MAX_CONCURRENT;
+
+function runInChild(url: string, prevId?: string): Promise<Report> {
   return new Promise<Report>((resolve, reject) => {
     // spawn(node, [script]) rather than fork(script): fork's first argument is
     // traced by the bundler as an import, and the worker is deliberately built

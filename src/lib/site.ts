@@ -21,4 +21,6 @@ export const CREATOR = {
 export const RETENTION = {
   reportDays: 365,
   leadDays: 365 * 3,
+  /** Visitor statistics of registered sites — 25 months, so a year can be compared with the last. */
+  analyticsDays: 760,
 };
