@@ -363,6 +363,8 @@ const en = {
       installTitle: "1. Add the measuring code to your website",
       installText:
         "Paste these two lines into the <head> of every page — on a PHP site usually into the shared header file. It works the same on plain HTML, PHP, WordPress and Next.js.",
+      cspNote:
+        "Does your site send a Content-Security-Policy header without 'unsafe-inline'? Then leave out the first line (the browser would block it), use only the second one, put it before your cookie-banner script, and allow {host} in script-src and connect-src.",
       consentTitle: "2. Connect it to your cookie banner",
       consentText:
         "Until a visitor accepts cookies, we count them anonymously and store nothing in their browser. When they accept analytics cookies, call this line from your banner — and also on every page load if consent was given earlier. Then we can recognise returning visitors and link a purchase to an ad clicked days before.",
@@ -922,6 +924,8 @@ const cs: typeof en = {
       installTitle: "1. Vložte na web měřicí kód",
       installText:
         "Tyto dva řádky vložte do <head> každé stránky — u PHP webu obvykle do společného souboru s hlavičkou. Funguje to stejně na čistém HTML, PHP, WordPressu i Next.js.",
+      cspNote:
+        "Posílá váš web hlavičku Content-Security-Policy bez 'unsafe-inline'? Pak první řádek vynechte (prohlížeč by ho zablokoval), použijte jen ten druhý, dejte ho před skript cookie lišty a v script-src i connect-src povolte {host}.",
       consentTitle: "2. Napojte ho na cookie lištu",
       consentText:
         "Dokud návštěvník nepřijme cookies, počítáme ho anonymně a do jeho prohlížeče nic neukládáme. Když přijme analytické cookies, zavolejte z lišty tento řádek — a také při každém načtení stránky, pokud souhlas dal už dřív. Pak poznáme vracející se návštěvníky a nákup přiřadíme i k reklamě, na kterou klikl před několika dny.",

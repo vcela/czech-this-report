@@ -114,6 +114,7 @@ if (BOTS.test(ua)) {
         <h2 id="install-h" className="text-xl font-semibold mb-2">{s.installTitle}</h2>
         <p className="text-muted mb-4">{s.installText}</p>
         <Code>{snippet}</Code>
+        <p className="text-sm text-muted mb-4">{s.cspNote.replace("{host}", new URL(SITE_URL).host)}</p>
 
         <h2 className="text-xl font-semibold mb-2 mt-8">{s.consentTitle}</h2>
         <p className="text-muted mb-4">{s.consentText}</p>
