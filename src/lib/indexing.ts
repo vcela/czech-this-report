@@ -63,14 +63,21 @@ export async function runInspection(site: Site, userId: number): Promise<number>
     `INSERT OR REPLACE INTO url_index (site_id, url, verdict, coverage, last_crawl, checked_at) VALUES (?, ?, ?, ?, ?, ?)`
   );
   let n = 0;
+  let failures = 0;
   for (const url of todo) {
     try {
       const r = await inspectUrl(userId, site.gsc_property, url);
       save.run(site.id, url, r.verdict, r.coverage, r.lastCrawl, Date.now());
       n++;
+      failures = 0;
     } catch (e) {
-      console.error(`URL inspection stopped for ${site.host}`, e);
-      break; // quota or auth — the rest waits for the next run
+      // Google sometimes fails on a single URL (500); skip it. Several in a
+      // row means quota or auth — the rest waits for the next run.
+      if (++failures >= 3) {
+        console.error(`URL inspection stopped for ${site.host} after 3 errors in a row`, e);
+        break;
+      }
+      console.warn(`URL inspection skipped ${url}: ${e instanceof Error ? e.message.slice(0, 120) : e}`);
     }
   }
   return n;
