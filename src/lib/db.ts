@@ -152,6 +152,8 @@ export function getDb(): Database.Database {
     "bot_key TEXT",
     "geo_prompts TEXT NOT NULL DEFAULT ''",
     "brand TEXT NOT NULL DEFAULT ''",
+    "snippet_found_at INTEGER",
+    "indexnow_ok_at INTEGER",
   ]) {
     try {
       db.exec(`ALTER TABLE sites ADD COLUMN ${col}`);

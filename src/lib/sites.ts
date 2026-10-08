@@ -24,6 +24,8 @@ export interface Site {
   bot_key: string | null;
   geo_prompts: string;
   brand: string;
+  snippet_found_at: number | null;
+  indexnow_ok_at: number | null;
 }
 
 export interface SiteRow extends Site {

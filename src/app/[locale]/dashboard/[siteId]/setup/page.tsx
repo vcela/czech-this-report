@@ -3,21 +3,21 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n";
 import { getDict } from "@/lib/i18n/dictionaries";
 import { requireUser } from "@/lib/auth";
-import { VERIFY_META, getSite } from "@/lib/sites";
-import { SITE_URL } from "@/lib/site";
+import { getSite } from "@/lib/sites";
 import {
-  deleteSiteAction, disconnectGoogleAction, saveGoalsAction, setPropertyAction, verifySiteAction,
+  checkSetupAction, deleteSiteAction, disconnectGoogleAction, saveGoalsAction, setPropertyAction, verifySiteAction,
 } from "../../../account-actions";
 import { googleConfigured, hasGoogle, listProperties } from "@/lib/google";
-import { indexNowKeyUrl } from "@/lib/indexing";
-import { BOT_UA_PATTERN } from "@/lib/bots";
+import { OPTIONAL, STEPS, buildSetupPrompt, setupStatus, siteSnippets, type StepId, type StepState } from "@/lib/setup";
 import { SubmitButton } from "@/components/account/Forms";
+import { CopyButton } from "@/components/account/CopyButton";
+import { Flash, Hidden, fill } from "@/components/account/Ui";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ locale: string; siteId: string }>;
-  searchParams: Promise<{ error?: string; saved?: string; google?: string }>;
+  searchParams: Promise<{ error?: string; saved?: string; google?: string; checked?: string; msg?: string }>;
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
@@ -34,24 +34,73 @@ function Code({ children }: { children: string }) {
   );
 }
 
+const STATE_STYLE: Record<StepState, { ring: string; text: string; icon: string }> = {
+  done: { ring: "border-score-green bg-score-green/15 text-score-green", text: "text-score-green", icon: "✓" },
+  partial: { ring: "border-score-orange text-score-orange", text: "text-score-orange", icon: "…" },
+  todo: { ring: "border-border text-muted", text: "text-muted", icon: "" },
+};
+
+/** A setup step: open while it needs doing, collapsed (and green) once it's verified. */
+function Step({
+  n,
+  id,
+  state,
+  title,
+  note,
+  stateLabel,
+  optional,
+  children,
+}: {
+  n: number;
+  id: StepId;
+  state: StepState;
+  title: string;
+  note: string;
+  stateLabel: string;
+  optional?: boolean;
+  children: React.ReactNode;
+}) {
+  const st = STATE_STYLE[state];
+  return (
+    <details
+      id={`step-${id}`}
+      open={state !== "done" && !(optional && state === "todo")}
+      className={`group rounded-xl border bg-surface mb-3 scroll-mt-20 ${state === "done" ? "border-score-green/40" : "border-border"}`}
+    >
+      <summary className="flex items-center gap-4 p-4 sm:px-5 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+        <span aria-hidden="true" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 font-bold ${st.ring}`}>
+          {st.icon || n}
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="font-semibold">
+            {title}
+          </span>
+          <span className="block text-sm text-muted">{note}</span>
+        </span>
+        <span className={`text-sm font-semibold whitespace-nowrap ${st.text}`}>{stateLabel}</span>
+        <span aria-hidden="true" className="text-muted transition-transform group-open:rotate-180">▾</span>
+      </summary>
+      <div className="px-4 sm:px-5 pb-5 pt-1 border-t border-border">{children}</div>
+    </details>
+  );
+}
+
 export default async function SetupPage(props: Props) {
   const { locale, siteId } = await props.params;
   if (!isLocale(locale)) notFound();
   const user = await requireUser(locale);
   const site = getSite(user.id, siteId);
   if (!site) notFound();
-  const { error, saved, google: googleMsg } = await props.searchParams;
-  const t = getDict(locale).account;
+  const sp = await props.searchParams;
+  const dict = getDict(locale);
+  const t = dict.account;
   const s = t.setup;
-  const hidden = (
-    <>
-      <input type="hidden" name="locale" value={locale} />
-      <input type="hidden" name="siteId" value={site.id} />
-    </>
-  );
-  const card = "rounded-xl border border-border bg-surface p-5 sm:p-6 mb-8";
-  const snippet = `<script>window.ctr=window.ctr||function(){(ctr.q=ctr.q||[]).push(arguments)}</script>
-<script defer src="${SITE_URL}/ctr.js" data-site="${site.id}"></script>`;
+  const hidden = <Hidden locale={locale} siteId={site.id} />;
+  const snip = siteSnippets(site);
+  const status = setupStatus(site, user.id);
+  const prompt = buildSetupPrompt(site, status, s.prompt);
+  const required = STEPS.filter((x) => !OPTIONAL.includes(x));
+  const doneCount = required.filter((x) => status[x] === "done").length;
 
   const googleConnected = googleConfigured() && hasGoogle(user.id);
   let properties: string[] = [];
@@ -63,72 +112,62 @@ export default async function SetupPage(props: Props) {
     }
   }
 
-  const endpoint = `${SITE_URL}/api/bots`;
-  const payload = `'s' => '${site.id}', 'k' => '${site.bot_key}'`;
-  const phpSnippet = `<?php
-// Czech Th!s Report — crawler log. Sends nothing for human visitors.
-(function () {
-    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    if (!preg_match('/${BOT_UA_PATTERN}/i', $ua)) return;
-    $path = $_SERVER['REQUEST_URI'] ?? '/';
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-    register_shutdown_function(function () use ($ua, $path, $ip) {
-        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
-        $ch = curl_init('${endpoint}');
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode([${payload}, 'ua' => $ua, 'ip' => $ip, 'path' => $path, 'status' => http_response_code()]),
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-            CURLOPT_CONNECTTIMEOUT => 1,
-            CURLOPT_TIMEOUT => 2,
-            CURLOPT_RETURNTRANSFER => true,
-        ]);
-        curl_exec($ch);
-    });
-})();`;
-  const nextSnippet = `import { after } from "next/server";
-
-const BOTS = /${BOT_UA_PATTERN}/i;
-
-// inside your proxy (middleware) function, before returning:
-const ua = request.headers.get("user-agent") ?? "";
-if (BOTS.test(ua)) {
-  after(() =>
-    fetch("${endpoint}", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        s: "${site.id}",
-        k: "${site.bot_key}",
-        ua,
-        ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "",
-        path: request.nextUrl.pathname,
-      }),
-    }).catch(() => {})
+  const step = (id: StepId, n: number, children: React.ReactNode) => (
+    <Step
+      key={id}
+      n={n}
+      id={id}
+      state={status[id]}
+      title={s.stepTitles[id]}
+      note={s.stepNotes[`${id}_${status[id]}`] ?? s.stepNotes[`${id}_todo`]}
+      stateLabel={OPTIONAL.includes(id) && status[id] === "todo" ? s.states.optional : s.states[status[id]]}
+      optional={OPTIONAL.includes(id)}
+    >
+      {children}
+    </Step>
   );
-}`;
 
-  return (
-    <div>
-      <section className={card} aria-labelledby="install-h">
-        <h2 id="install-h" className="text-xl font-semibold mb-2">{s.installTitle}</h2>
-        <p className="text-muted mb-4">{s.installText}</p>
-        <Code>{snippet}</Code>
-        <p className="text-sm text-muted mb-4">{s.cspNote.replace("{host}", new URL(SITE_URL).host)}</p>
-
-        <h2 className="text-xl font-semibold mb-2 mt-8">{s.consentTitle}</h2>
-        <p className="text-muted mb-4">{s.consentText}</p>
+  const bodies: Record<StepId, React.ReactNode> = {
+    verify: (
+      <>
+        <p className="text-muted my-3">{t.verifyIntro}</p>
+        <p className="text-sm font-medium mb-1.5">{t.verifyMetaLabel}</p>
+        <Code>{snip.verifyMeta}</Code>
+        <p className="text-sm font-medium mb-1.5">{t.verifyDnsLabel}</p>
+        <Code>{snip.verifyDns}</Code>
+        <p className="text-sm text-muted mb-4 -mt-2">{t.verifyDnsHint}</p>
+        {status.verify !== "done" && (
+          <form action={verifySiteAction}>
+            {hidden}
+            <SubmitButton variant="secondary">{t.verifySubmit}</SubmitButton>
+          </form>
+        )}
+        {sp.error === "verify" && <p role="alert" className="text-sm text-score-red mt-3">{t.verifyFailed}</p>}
+      </>
+    ),
+    snippet: (
+      <>
+        <p className="text-muted my-3">{s.installText}</p>
+        <Code>{`${snip.stub}\n${snip.script}`}</Code>
+        <p className="text-sm text-muted">{s.cspNote.replace("{host}", new URL(snip.origin).host)}</p>
+      </>
+    ),
+    consent: (
+      <>
+        <p className="text-muted my-3">{s.consentText}</p>
         <Code>{`ctr('consent', true);`}</Code>
         <p className="text-sm text-muted mb-1.5">{s.consentRevoke}</p>
         <Code>{`ctr('consent', false);`}</Code>
-
-        <h2 className="text-xl font-semibold mb-2 mt-8">{s.conversionsTitle}</h2>
-        <p className="text-muted mb-4">{s.conversionsText}</p>
+        <p className="text-sm text-muted">{s.privacyNote}</p>
+      </>
+    ),
+    conversions: (
+      <>
+        <p className="text-muted my-3">{s.conversionsText}</p>
         <Code>{`<script>ctr('purchase', 1290);</script>`}</Code>
         <p className="text-sm text-muted mb-1.5">{s.eventText}</p>
         <Code>{`ctr('event', 'phone-click');`}</Code>
-
-        <form action={saveGoalsAction} className="mt-6">
+        <form action={saveGoalsAction} className="mt-2">
           {hidden}
           <label htmlFor="goals" className="block font-medium mb-1">{s.goalsLabel}</label>
           <p id="goals-help" className="text-sm text-muted mb-2">{s.goalsHelp}</p>
@@ -143,17 +182,15 @@ if (BOTS.test(ua)) {
           />
           <div className="flex items-center gap-3">
             <SubmitButton variant="secondary">{s.goalsSave}</SubmitButton>
-            {saved && <p role="status" className="text-sm text-score-green">{s.saved}</p>}
+            {sp.saved && <p role="status" className="text-sm text-score-green">{s.saved}</p>}
           </div>
         </form>
-
-        <p className="text-sm text-muted mt-8 border-t border-border pt-4">{s.privacyNote}</p>
-      </section>
-
-      <section className={card} aria-labelledby="google-h">
-        <h2 id="google-h" className="text-xl font-semibold mb-2">{s.googleTitle}</h2>
-        <p className="text-muted mb-4">{s.googleText}</p>
-        {googleMsg === "error" && <p role="alert" className="text-sm text-score-red mb-4">{s.googleError}</p>}
+      </>
+    ),
+    google: (
+      <>
+        <p className="text-muted my-3">{s.googleText}</p>
+        {sp.google === "error" && <p role="alert" className="text-sm text-score-red mb-4">{s.googleError}</p>}
         {!googleConfigured() ? (
           <p className="text-sm text-score-orange">{s.googleMissingConfig}</p>
         ) : !googleConnected ? (
@@ -179,12 +216,7 @@ if (BOTS.test(ua)) {
                 {hidden}
                 <div>
                   <label htmlFor="property" className="block text-sm font-medium mb-1.5">{s.propertyLabel}</label>
-                  <select
-                    id="property"
-                    name="property"
-                    defaultValue={site.gsc_property ?? ""}
-                    className="rounded-lg border border-border bg-surface-2 px-3 py-2.5"
-                  >
+                  <select id="property" name="property" defaultValue={site.gsc_property ?? ""} className="rounded-lg border border-border bg-surface-2 px-3 py-2.5">
                     {!site.gsc_property && <option value="">—</option>}
                     {properties.map((p) => (
                       <option key={p} value={p}>{p}</option>
@@ -196,54 +228,81 @@ if (BOTS.test(ua)) {
             )}
           </>
         )}
-      </section>
-
-      <section className={card} aria-labelledby="indexnow-h">
-        <h2 id="indexnow-h" className="text-xl font-semibold mb-2">{s.indexNowTitle}</h2>
-        <p className="text-muted mb-4">{s.indexNowText}</p>
-        <Code>{`${site.indexnow_key}.txt`}</Code>
+      </>
+    ),
+    indexnow: (
+      <>
+        <p className="text-muted my-3">{s.indexNowText}</p>
+        <Code>{snip.indexNowFile}</Code>
         <p className="text-sm text-muted mb-1.5">{s.indexNowContent}</p>
-        <Code>{site.indexnow_key ?? ""}</Code>
+        <Code>{snip.indexNowKey}</Code>
         <p className="text-sm text-muted break-all">
-          <a href={indexNowKeyUrl(site)} rel="noopener" className="text-accent hover:underline">{indexNowKeyUrl(site)}</a>
+          <a href={snip.indexNowUrl} rel="noopener" className="text-accent hover:underline">{snip.indexNowUrl}</a>
         </p>
-      </section>
-
-      <section id="bots" className={`${card} scroll-mt-20`} aria-labelledby="bots-h">
-        <h2 id="bots-h" className="text-xl font-semibold mb-2">{s.botsTitle}</h2>
-        <p className="text-muted mb-4">{s.botsText}</p>
+      </>
+    ),
+    bots: (
+      <>
+        <p className="text-muted my-3">{s.botsText}</p>
         <p className="text-sm mb-1.5">{s.botsPhp}</p>
-        <Code>{phpSnippet}</Code>
+        <Code>{snip.php}</Code>
         <p className="text-sm mb-1.5">{s.botsNext}</p>
-        <Code>{nextSnippet}</Code>
+        <Code>{snip.next}</Code>
         <p className="text-sm text-score-orange">{s.botsSecret}</p>
+      </>
+    ),
+  };
+
+  return (
+    <div>
+      <Flash msg={sp.msg} text={sp.msg ? t.msgs[sp.msg] : undefined} />
+
+      {/* ---------- Progress + the two big buttons ---------- */}
+      <section aria-labelledby="wiz-h" className="rounded-xl border border-border bg-surface p-5 sm:p-6 mb-6">
+        <div className="flex flex-wrap items-baseline justify-between gap-3 mb-3">
+          <h2 id="wiz-h" className="text-xl font-semibold">{s.wizardTitle}</h2>
+          <p className={`font-semibold ${doneCount === required.length ? "text-score-green" : "text-muted"}`}>
+            {fill(s.progress, { done: doneCount, total: required.length })}
+          </p>
+        </div>
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={required.length}
+          aria-valuenow={doneCount}
+          aria-label={fill(s.progress, { done: doneCount, total: required.length })}
+          className="h-2 rounded-full bg-surface-2 mb-5 overflow-hidden"
+        >
+          <div className="h-full rounded-full bg-score-green transition-all" style={{ width: `${(doneCount / required.length) * 100}%` }} />
+        </div>
+
+        <div className="grid md:grid-cols-[1fr_auto] gap-5 items-start">
+          <div>
+            <h3 className="font-semibold mb-1">{s.aiTitle}</h3>
+            <p className="text-sm text-muted">{prompt ? s.aiText : s.aiAllDone}</p>
+          </div>
+          <div className="flex flex-wrap gap-3 md:justify-end">
+            {prompt && <CopyButton text={prompt} label={s.aiCopy} copied={s.aiCopied} />}
+            <form action={checkSetupAction}>
+              {hidden}
+              <SubmitButton variant="secondary" pendingLabel={s.checking}>{s.checkButton}</SubmitButton>
+            </form>
+          </div>
+        </div>
+        {prompt && (
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm text-muted">{s.aiShow}</summary>
+            <pre className="mt-2 bg-surface-2 rounded-lg p-3 text-xs whitespace-pre-wrap max-h-96 overflow-y-auto">{prompt}</pre>
+          </details>
+        )}
+        {sp.checked && <p role="status" className="text-sm text-muted mt-4">{s.checked}</p>}
       </section>
 
-      <section className={card} aria-labelledby="verify-h">
-        {site.verified_at ? (
-          <p id="verify-h" className="text-score-green">{s.verifyDone}</p>
-        ) : (
-          <>
-            <h2 id="verify-h" className="text-xl font-semibold mb-2">{t.verifyTitle}</h2>
-            <p className="text-muted mb-5">{t.verifyIntro}</p>
-            <p className="text-sm font-medium mb-1.5">{t.verifyMetaLabel}</p>
-            <Code>{`<meta name="${VERIFY_META}" content="${site.verify_token}">`}</Code>
-            <p className="text-sm font-medium mb-1.5">{t.verifyDnsLabel}</p>
-            <Code>{`${site.host}  TXT  "${VERIFY_META}=${site.verify_token}"`}</Code>
-            <p className="text-sm text-muted mb-5 -mt-2">{t.verifyDnsHint}</p>
-            <form action={verifySiteAction}>
-              {hidden}
-              <SubmitButton>{t.verifySubmit}</SubmitButton>
-            </form>
-            {error === "verify" && (
-              <p role="alert" className="text-sm text-score-red mt-3">{t.verifyFailed}</p>
-            )}
-          </>
-        )}
-      </section>
+      {/* ---------- Steps ---------- */}
+      {STEPS.map((id, i) => step(id, i + 1, bodies[id]))}
 
       {/* Two steps on purpose: removing a site deletes its statistics for good. */}
-      <details className="pt-4 border-t border-border">
+      <details className="mt-8 pt-4 border-t border-border">
         <summary className="cursor-pointer text-sm text-score-red w-fit">{t.deleteSite}</summary>
         <form action={deleteSiteAction} className="mt-3">
           {hidden}

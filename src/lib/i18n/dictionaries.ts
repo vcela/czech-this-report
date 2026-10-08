@@ -413,16 +413,16 @@ const en = {
       } as Record<string, string>,
     },
     setup: {
-      installTitle: "1. Add the measuring code to your website",
+      installTitle: "Measuring code",
       installText:
         "Paste these two lines into the <head> of every page — on a PHP site usually into the shared header file. It works the same on plain HTML, PHP, WordPress and Next.js.",
       cspNote:
         "Does your site send a Content-Security-Policy header without 'unsafe-inline'? Then leave out the first line (the browser would block it), use only the second one, put it before your cookie-banner script, and allow {host} in script-src and connect-src.",
-      consentTitle: "2. Connect it to your cookie banner",
+      consentTitle: "Cookie banner",
       consentText:
         "Until a visitor accepts cookies, we count them anonymously and store nothing in their browser. When they accept analytics cookies, call this line from your banner — and also on every page load if consent was given earlier. Then we can recognise returning visitors and link a purchase to an ad clicked days before.",
       consentRevoke: "If the visitor withdraws consent:",
-      conversionsTitle: "3. Conversions (optional)",
+      conversionsTitle: "Conversions",
       conversionsText:
         "Sent forms are counted automatically. For an online shop, put this on the order confirmation page, with the order value in CZK:",
       eventText: "Any other action you care about (a click on the phone number, a download…):",
@@ -435,7 +435,67 @@ const en = {
       privacyNote:
         "Mention the statistics in your website's privacy policy: you collect page views, the referring site and screen size; IP addresses are not stored; with consent a random identifier is kept in the browser (localStorage); the statistics are deleted after 25 months.",
       verifyDone: "Ownership of this site is confirmed.",
-      googleTitle: "4. Connect Google Search Console",
+      wizardTitle: "Connect your website",
+      progress: "{done} of {total} done",
+      checkButton: "Check deployment",
+      checking: "Checking your website…",
+      checked: "Checked just now — the list below shows what we found on your website.",
+      aiTitle: "Let AI do it",
+      aiText:
+        "Copy a ready-made instruction and paste it into your coding assistant (Claude Code, Cursor, ChatGPT…) opened on your website's code. It contains only the steps that aren't done yet, with the exact code for this site. Then upload the changes and press “Check deployment”.",
+      aiCopy: "Copy instruction for AI",
+      aiCopied: "Copied",
+      aiShow: "Show the instruction",
+      aiAllDone: "Everything that goes into the website's code is done.",
+      manualToggle: "Show the code",
+      optional: "optional",
+      states: { done: "Done", partial: "Waiting", todo: "To do", optional: "Optional" } as Record<string, string>,
+      stepTitles: {
+        verify: "Ownership",
+        snippet: "Measuring code",
+        consent: "Cookie banner",
+        conversions: "Conversions",
+        google: "Google Search Console",
+        indexnow: "IndexNow (Bing, Seznam)",
+        bots: "Crawler log",
+      } as Record<string, string>,
+      stepNotes: {
+        verify_done: "Ownership is confirmed.",
+        verify_todo: "We haven't found the verification tag yet.",
+        snippet_done: "Statistics are running — visits are arriving.",
+        snippet_partial: "The code is on the website; waiting for the first visit. Open the site in a browser to speed it up.",
+        snippet_todo: "The code isn't on the homepage yet.",
+        consent_done: "Works — a visit with cookie consent has arrived.",
+        consent_partial: "No visitor has accepted cookies yet. It confirms itself as soon as someone does.",
+        consent_todo: "Set up the measuring code first.",
+        conversions_done: "Conversions are being counted.",
+        conversions_todo: "No conversion yet. Sent forms count on their own.",
+        google_done: "Connected — search data is coming in.",
+        google_todo: "Not connected. This one needs your own Google sign-in, AI can't do it.",
+        indexnow_done: "The key file is on the website.",
+        indexnow_todo: "The key file isn't on the website yet.",
+        bots_done: "Crawler visits are arriving.",
+        bots_todo: "No crawler record has arrived yet. Robots come every few hours to days.",
+      } as Record<string, string>,
+      prompt: {
+        intro:
+          "Please update the website {host} (its code is open in front of you) so it has the things below. Don't change anything else. When you're done, tell me which files you changed and anything you skipped.",
+        stack:
+          "First find out what the site runs on (plain HTML, PHP with a shared header file, WordPress, Next.js…) and where the shared <head> of all pages is. Skip any step that is already in place.",
+        verify: "Ownership verification — add this line to the <head> of every page (the homepage is enough):\n{verifyMeta}",
+        snippet:
+          "Measuring code — add this to the <head> of every page:\n{script}\nIf the site sends a Content-Security-Policy header, allow {origin} in both script-src and connect-src. If inline scripts are allowed (no CSP, or CSP with 'unsafe-inline'), also put this line right before it:\n{stub}\nOtherwise leave that inline line out and make sure the measuring script tag comes before the cookie-banner script.",
+        consent:
+          "Cookie banner — find the site's cookie consent code. When the visitor accepts analytics cookies, call window.ctr && window.ctr('consent', true); when they reject or withdraw consent, call window.ctr && window.ctr('consent', false). On page load, if consent was given earlier, call window.ctr('consent', true) as well. If the site has no cookie banner, skip this and tell me.",
+        conversions:
+          "Conversions — sent forms are counted automatically. If the site is an online shop, on the order confirmation page call window.ctr && window.ctr('purchase', ORDER_TOTAL) with the order total in CZK taken from the order. If the site has “thank you” pages shown after a form is sent, list their URLs for me (I'll enter them myself).",
+        indexnow:
+          "IndexNow — create a file named {indexNowFile} in the website's root folder so it is served at {indexNowUrl}. Its only content is:\n{indexNowKey}",
+        bots:
+          "Crawler log (only if the site has server-side code):\n- PHP site: create ctr-bots.php in the website root with the content below and include it at the very top of the shared header file, before any output (include __DIR__ . '/ctr-bots.php';).\n```php\n{php}\n```\n- Next.js site: add this to proxy.ts (middleware.ts in older versions):\n```ts\n{next}\n```\n- Plain HTML without server code: skip this step.\nThe key in this code is a secret; if the repository is public, move it to an environment variable.",
+        outro: "Keep the code exactly as given (IDs and keys included).",
+      },
+      googleTitle: "Google Search Console",
       googleText:
         "Search Console is Google's free tool that knows which searches show your site and which pages Google has (or hasn't) put in its index. Connecting it is read-only, except for submitting your sitemap when you press the button.",
       googleConnect: "Connect Google",
@@ -448,11 +508,11 @@ const en = {
       propertyNone:
         "None of your Search Console properties matches this site. Add the site in Search Console first (a “Domain” property is best), then reload this page.",
       propertySave: "Use this property",
-      indexNowTitle: "5. IndexNow — tell Bing and Seznam about changes",
+      indexNowTitle: "IndexNow (Bing, Seznam)",
       indexNowText:
         "IndexNow lets you notify Bing, Seznam, Yandex and others the moment a page changes. It needs a small text file on your site that proves the site is yours. Create a file with this name in the root folder of your website (next to index.php / index.html):",
       indexNowContent: "Its only content is this line:",
-      botsTitle: "6. Crawler log (optional)",
+      botsTitle: "Crawler log",
       botsText:
         "The measuring code runs in visitors' browsers, so it can't see search engine and AI robots — they don't run JavaScript. To see when Googlebot, Seznam or ChatGPT visited, a few lines have to run on your server. Nothing is sent for human visitors.",
       botsPhp:
@@ -490,7 +550,7 @@ const en = {
       "google-error": "Google returned an error. Try again later.",
       "inspect-ok": "Pages checked with Google.",
       "indexnow-ok": "Sent {n} page(s) to Bing, Seznam and other IndexNow search engines.",
-      "indexnow-key": "The IndexNow key file isn't on your site yet (see Settings, step 5).",
+      "indexnow-key": "The IndexNow key file isn't on your site yet (see Settings → IndexNow).",
       "indexnow-nothing": "Nothing new to send — no page in the sitemap changed since the last time.",
       "indexnow-rejected": "IndexNow refused the request. Check the key file and try again later.",
       "prompts-ok": "Questions suggested. Edit them if you like and save.",
@@ -536,10 +596,10 @@ const en = {
       indexNowTitle: "Bing, Seznam and others (IndexNow)",
       indexNowIntro: "After you add or change pages, send them here and Bing, Seznam and other IndexNow engines learn about it within minutes.",
       indexNowSubmit: "Notify search engines",
-      indexNowKeyMissing: "First put the key file on your site (Settings, step 5).",
+      indexNowKeyMissing: "First put the key file on your site (Settings → IndexNow).",
       indexNowLast: "Last sent: {date}",
       botsTitle: "Robots that visited (last 30 days)",
-      botsNotInstalled: "The crawler log isn't installed yet (Settings, step 6). Without it we can't see robots — they don't run the measuring code.",
+      botsNotInstalled: "The crawler log isn't installed yet (Settings → Crawler log). Without it we can't see robots — they don't run the measuring code.",
       bot: "Robot",
       visits: "Visits",
       lastVisit: "Last visit",
@@ -1027,16 +1087,16 @@ const cs: typeof en = {
       } as Record<string, string>,
     },
     setup: {
-      installTitle: "1. Vložte na web měřicí kód",
+      installTitle: "Měřicí kód",
       installText:
         "Tyto dva řádky vložte do <head> každé stránky — u PHP webu obvykle do společného souboru s hlavičkou. Funguje to stejně na čistém HTML, PHP, WordPressu i Next.js.",
       cspNote:
         "Posílá váš web hlavičku Content-Security-Policy bez 'unsafe-inline'? Pak první řádek vynechte (prohlížeč by ho zablokoval), použijte jen ten druhý, dejte ho před skript cookie lišty a v script-src i connect-src povolte {host}.",
-      consentTitle: "2. Napojte ho na cookie lištu",
+      consentTitle: "Cookie lišta",
       consentText:
         "Dokud návštěvník nepřijme cookies, počítáme ho anonymně a do jeho prohlížeče nic neukládáme. Když přijme analytické cookies, zavolejte z lišty tento řádek — a také při každém načtení stránky, pokud souhlas dal už dřív. Pak poznáme vracející se návštěvníky a nákup přiřadíme i k reklamě, na kterou klikl před několika dny.",
       consentRevoke: "Když návštěvník souhlas odvolá:",
-      conversionsTitle: "3. Konverze (nepovinné)",
+      conversionsTitle: "Konverze",
       conversionsText:
         "Odeslané formuláře se počítají automaticky. U e-shopu vložte na stránku potvrzení objednávky tento řádek s hodnotou objednávky v Kč:",
       eventText: "Jakákoli jiná akce, na které vám záleží (klik na telefon, stažení ceníku…):",
@@ -1049,7 +1109,67 @@ const cs: typeof en = {
       privacyNote:
         "Zmiňte měření v zásadách ochrany osobních údajů svého webu: sbíráte zobrazené stránky, web, ze kterého návštěvník přišel, a velikost obrazovky; IP adresy se neukládají; se souhlasem se v prohlížeči drží náhodný identifikátor (localStorage); statistiky se mažou po 25 měsících.",
       verifyDone: "Vlastnictví webu je ověřené.",
-      googleTitle: "4. Připojte Google Search Console",
+      wizardTitle: "Propojení s webem",
+      progress: "Hotovo {done} z {total}",
+      checkButton: "Zkontrolovat nasazení",
+      checking: "Kontroluji váš web…",
+      checked: "Právě zkontrolováno — v seznamu níže je, co jsme na webu našli.",
+      aiTitle: "Nechte to udělat AI",
+      aiText:
+        "Zkopírujte připravený pokyn a vložte ho do svého AI asistenta pro programování (Claude Code, Cursor, ChatGPT…) otevřeného nad kódem webu. Obsahuje jen kroky, které ještě nejsou hotové, s přesným kódem pro tento web. Pak změny nahrajte na web a klikněte na „Zkontrolovat nasazení“.",
+      aiCopy: "Zkopírovat pokyn pro AI",
+      aiCopied: "Zkopírováno",
+      aiShow: "Zobrazit pokyn",
+      aiAllDone: "Vše, co patří do kódu webu, je hotové.",
+      manualToggle: "Zobrazit kód",
+      optional: "nepovinné",
+      states: { done: "Hotovo", partial: "Čeká se", todo: "Chybí", optional: "Nepovinné" } as Record<string, string>,
+      stepTitles: {
+        verify: "Vlastnictví webu",
+        snippet: "Měřicí kód",
+        consent: "Cookie lišta",
+        conversions: "Konverze",
+        google: "Google Search Console",
+        indexnow: "IndexNow (Bing, Seznam)",
+        bots: "Záznam robotů",
+      } as Record<string, string>,
+      stepNotes: {
+        verify_done: "Vlastnictví je ověřené.",
+        verify_todo: "Ověřovací značku jsme zatím nenašli.",
+        snippet_done: "Měření běží — návštěvy přicházejí.",
+        snippet_partial: "Kód na webu je, čekáme na první návštěvu. Otevřete web v prohlížeči a bude to hned.",
+        snippet_todo: "Kód na úvodní stránce zatím není.",
+        consent_done: "Funguje — přišla návštěva se souhlasem s cookies.",
+        consent_partial: "Zatím nikdo cookies nepřijal. Ověří se samo, jakmile to někdo udělá.",
+        consent_todo: "Nejdřív nasaďte měřicí kód.",
+        conversions_done: "Konverze se počítají.",
+        conversions_todo: "Zatím žádná konverze. Odeslané formuláře se počítají samy.",
+        google_done: "Připojeno — data z vyhledávání přicházejí.",
+        google_todo: "Nepřipojeno. Tohle vyžaduje vaše přihlášení do Googlu, AI to za vás neudělá.",
+        indexnow_done: "Soubor s klíčem na webu je.",
+        indexnow_todo: "Soubor s klíčem na webu zatím není.",
+        bots_done: "Záznamy robotů přicházejí.",
+        bots_todo: "Zatím nepřišel žádný záznam. Roboti chodí jednou za pár hodin až dní.",
+      } as Record<string, string>,
+      prompt: {
+        intro:
+          "Uprav prosím web {host} (jeho kód máš otevřený) tak, aby měl věci níže. Nic jiného neměň. Na konci mi napiš, které soubory jsi upravil a co jsi případně přeskočil.",
+        stack:
+          "Nejdřív zjisti, na čem web běží (čisté HTML, PHP se společnou hlavičkou, WordPress, Next.js…) a kde je společný <head> všech stránek. Krok, který už na webu je, přeskoč.",
+        verify: "Ověření vlastnictví — do <head> všech stránek (stačí úvodní) vlož tento řádek:\n{verifyMeta}",
+        snippet:
+          "Měřicí kód — do <head> všech stránek vlož:\n{script}\nPokud web posílá hlavičku Content-Security-Policy, povol {origin} v script-src i connect-src. Pokud web povoluje inline skripty (žádná CSP, nebo CSP s 'unsafe-inline'), vlož těsně před něj ještě tento řádek:\n{stub}\nJinak inline řádek vynech a dej měřicí skript před skript cookie lišty.",
+        consent:
+          "Cookie lišta — najdi kód souhlasu s cookies. Když návštěvník přijme analytické cookies, zavolej window.ctr && window.ctr('consent', true); když odmítne nebo souhlas odvolá, zavolej window.ctr && window.ctr('consent', false). Při načtení stránky, pokud souhlas udělil už dřív, zavolej také window.ctr('consent', true). Pokud web cookie lištu nemá, krok přeskoč a napiš mi to.",
+        conversions:
+          "Konverze — odeslané formuláře se počítají samy. Pokud je web e-shop, na stránce potvrzení objednávky zavolej window.ctr && window.ctr('purchase', CELKOVA_CENA) s celkovou cenou objednávky v Kč z dat objednávky. Pokud má web děkovací stránky po odeslání formuláře, vypiš mi jejich adresy (zadám je sám).",
+        indexnow:
+          "IndexNow — vytvoř v kořenové složce webu soubor {indexNowFile}, aby byl dostupný na {indexNowUrl}. Jeho jediným obsahem je:\n{indexNowKey}",
+        bots:
+          "Záznam robotů (jen pokud má web kód na serveru):\n- PHP web: vytvoř v kořeni webu ctr-bots.php s obsahem níže a vlož ho na úplný začátek společného souboru s hlavičkou, před jakýkoli výstup (include __DIR__ . '/ctr-bots.php';).\n```php\n{php}\n```\n- Web na Next.js: přidej tohle do proxy.ts (ve starších verzích middleware.ts):\n```ts\n{next}\n```\n- Čisté HTML bez serverového kódu: krok přeskoč.\nKlíč v kódu je tajný; pokud je repozitář veřejný, přesuň ho do proměnné prostředí.",
+        outro: "Kód použij přesně tak, jak je uvedený (včetně ID a klíčů).",
+      },
+      googleTitle: "Google Search Console",
       googleText:
         "Search Console je bezplatný nástroj Googlu, který ví, na jaká hledání se váš web zobrazuje a které stránky Google má (nebo nemá) v indexu. Připojení je jen pro čtení, s výjimkou odeslání sitemapy, když na to kliknete.",
       googleConnect: "Připojit Google",
@@ -1062,11 +1182,11 @@ const cs: typeof en = {
       propertyNone:
         "Žádná vaše vlastnost v Search Console neodpovídá tomuto webu. Nejdřív web přidejte do Search Console (nejlépe jako „Doménu“) a pak stránku obnovte.",
       propertySave: "Použít tuto vlastnost",
-      indexNowTitle: "5. IndexNow — dejte vědět Bingu a Seznamu o změnách",
+      indexNowTitle: "IndexNow (Bing, Seznam)",
       indexNowText:
         "IndexNow umí upozornit Bing, Seznam, Yandex a další hned, jak se stránka změní. Potřebuje na webu malý textový soubor, který dokazuje, že web je váš. Vytvořte v kořenové složce webu (vedle index.php / index.html) soubor s tímto názvem:",
       indexNowContent: "Jeho jediným obsahem je tento řádek:",
-      botsTitle: "6. Záznam robotů (nepovinné)",
+      botsTitle: "Záznam robotů",
       botsText:
         "Měřicí kód běží v prohlížeči návštěvníků, takže roboty vyhledávačů a AI nevidí — ti JavaScript nespouštějí. Aby bylo vidět, kdy přišel Googlebot, Seznam nebo ChatGPT, musí na serveru běžet pár řádků. U lidských návštěv se nic neodesílá.",
       botsPhp:
@@ -1104,7 +1224,7 @@ const cs: typeof en = {
       "google-error": "Google vrátil chybu. Zkuste to později.",
       "inspect-ok": "Stránky zkontrolovány u Googlu.",
       "indexnow-ok": "Odesláno stránek: {n} — Bingu, Seznamu a dalším vyhledávačům IndexNow.",
-      "indexnow-key": "Soubor s klíčem IndexNow na webu zatím není (viz Nastavení, krok 5).",
+      "indexnow-key": "Soubor s klíčem IndexNow na webu zatím není (viz Nastavení → IndexNow).",
       "indexnow-nothing": "Není co posílat — žádná stránka v sitemapě se od minula nezměnila.",
       "indexnow-rejected": "IndexNow požadavek odmítl. Zkontrolujte soubor s klíčem a zkuste to později.",
       "prompts-ok": "Otázky navrženy. Případně je upravte a uložte.",
@@ -1150,10 +1270,10 @@ const cs: typeof en = {
       indexNowTitle: "Bing, Seznam a další (IndexNow)",
       indexNowIntro: "Když přidáte nebo změníte stránky, pošlete je odsud a Bing, Seznam a další vyhledávače IndexNow se to dozví během pár minut.",
       indexNowSubmit: "Dát vědět vyhledávačům",
-      indexNowKeyMissing: "Nejdřív dejte na web soubor s klíčem (Nastavení, krok 5).",
+      indexNowKeyMissing: "Nejdřív dejte na web soubor s klíčem (Nastavení → IndexNow).",
       indexNowLast: "Naposledy odesláno: {date}",
       botsTitle: "Roboti, kteří přišli (posledních 30 dní)",
-      botsNotInstalled: "Záznam robotů zatím není nainstalovaný (Nastavení, krok 6). Bez něj roboty nevidíme — měřicí kód nespouštějí.",
+      botsNotInstalled: "Záznam robotů zatím není nainstalovaný (Nastavení → Záznam robotů). Bez něj roboty nevidíme — měřicí kód nespouštějí.",
       bot: "Robot",
       visits: "Návštěvy",
       lastVisit: "Naposledy",

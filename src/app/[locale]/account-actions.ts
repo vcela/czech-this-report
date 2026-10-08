@@ -15,6 +15,7 @@ import { runInspection, submitIndexNow } from "@/lib/indexing";
 import { sitemapEntries } from "@/lib/crawl";
 import { aiConfigured, findCompetitors, runGeoCheck, saveSuggestion, suggestPrompts, suggestTopics, MAX_PROMPTS } from "@/lib/ai";
 import { getStats, parseGoals, setCampaignCost } from "@/lib/analytics";
+import { runSetupChecks } from "@/lib/setup";
 
 const loc = (fd: FormData): Locale => {
   const l = String(fd.get("locale") ?? "");
@@ -276,4 +277,15 @@ export async function campaignCostAction(fd: FormData) {
     setCampaignCost(site.id, String(fd.get("campaign") ?? ""), amount);
   }
   redirect(`${path}#campaigns`);
+}
+
+export async function checkSetupAction(fd: FormData) {
+  const { site, path } = await ownedSite(fd);
+  if (throttled(`setup:${site.id}`, 15_000)) redirect(`${path}/setup?msg=wait`);
+  try {
+    await runSetupChecks(site);
+  } catch (e) {
+    console.error("Setup check failed", e);
+  }
+  redirect(`${path}/setup?checked=1`);
 }
