@@ -5,13 +5,15 @@ import { isLocale } from "@/lib/i18n";
 import { getDict } from "@/lib/i18n/dictionaries";
 import { requireUser } from "@/lib/auth";
 import { getSite, listCompetitors, siteHistory } from "@/lib/sites";
-import { aiConfigured, citedInstead, geoHistory, getSuggestion, MAX_PROMPTS, type TopicIdea } from "@/lib/ai";
+import { aiConfigured, citedInstead, parsePrompts, geoHistory, getSuggestion, MAX_PROMPTS, type TopicIdea } from "@/lib/ai";
 import {
   addCompetitorAction, auditCompetitorAction, findCompetitorsAction, removeCompetitorAction, runGeoAction,
   savePromptsAction, suggestPromptsAction, suggestTopicsAction,
 } from "../../../account-actions";
 import { SubmitButton } from "@/components/account/Forms";
 import { CARD, Flash, Hidden, fill } from "@/components/account/Ui";
+import { CreditPill } from "@/components/account/CreditPill";
+import { PRICES } from "@/lib/credits";
 import { bandOf } from "@/components/report/ScoreGauge";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +43,7 @@ export default async function AiPage(props: Props) {
   const t = dict.account.ai;
   const hidden = <Hidden locale={locale} siteId={site.id} />;
   const ready = aiConfigured();
+  const cost = (n: number) => <span className="ml-2 rounded-full bg-black/15 px-2 py-0.5 text-xs font-normal">{fill(dict.account.credits.badge, { n })}</span>;
   const dt = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
   const runs = geoHistory(site.id);
   const latest = runs[0];
@@ -53,6 +56,11 @@ export default async function AiPage(props: Props) {
 
   return (
     <div>
+      {ready && (
+        <div className="flex justify-end mb-4">
+          <CreditPill userId={user.id} locale={locale} />
+        </div>
+      )}
       <Flash msg={msg} text={msg ? dict.account.msgs[msg] : undefined} />
       {!ready && <p className="mb-6 rounded-lg border border-score-orange text-score-orange px-4 py-3 text-sm">{t.notConfigured}</p>}
 
@@ -75,12 +83,12 @@ export default async function AiPage(props: Props) {
           <div className="flex flex-wrap gap-3 mb-6">
             <form action={suggestPromptsAction}>
               {hidden}
-              <SubmitButton variant="secondary" pendingLabel={t.topicsRunning}>{t.promptsSuggest}</SubmitButton>
+              <SubmitButton variant="secondary" pendingLabel={t.topicsRunning}>{t.promptsSuggest}{cost(PRICES.prompts)}</SubmitButton>
             </form>
             {site.geo_prompts && (
               <form action={runGeoAction}>
                 {hidden}
-                <SubmitButton pendingLabel={t.geoRunning}>{t.geoRun}</SubmitButton>
+                <SubmitButton pendingLabel={t.geoRunning}>{t.geoRun}{cost(parsePrompts(site.geo_prompts).length * PRICES.geo)}</SubmitButton>
               </form>
             )}
           </div>
@@ -154,7 +162,7 @@ export default async function AiPage(props: Props) {
         {ready && (
           <form action={suggestTopicsAction} className="mb-5">
             {hidden}
-            <SubmitButton variant="secondary" pendingLabel={t.topicsRunning}>{t.topicsRun}</SubmitButton>
+            <SubmitButton variant="secondary" pendingLabel={t.topicsRunning}>{t.topicsRun}{cost(PRICES.topics)}</SubmitButton>
           </form>
         )}
         {!topics ? (
@@ -185,7 +193,7 @@ export default async function AiPage(props: Props) {
           {ready && (
             <form action={findCompetitorsAction}>
               {hidden}
-              <SubmitButton variant="secondary" pendingLabel={t.competitorsFinding}>{t.competitorsFind}</SubmitButton>
+              <SubmitButton variant="secondary" pendingLabel={t.competitorsFinding}>{t.competitorsFind}{cost(PRICES.competitors)}</SubmitButton>
             </form>
           )}
           <form action={addCompetitorAction} className="flex gap-2">

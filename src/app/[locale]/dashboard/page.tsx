@@ -9,6 +9,8 @@ import { portfolio, type PortfolioRow } from "@/lib/portfolio";
 import { addSiteAction, logout } from "../account-actions";
 import { SubmitButton } from "@/components/account/Forms";
 import { fill } from "@/components/account/Ui";
+import { CreditPill } from "@/components/account/CreditPill";
+import { aiConfigured } from "@/lib/ai";
 import { bandOf } from "@/components/report/ScoreGauge";
 
 export const dynamic = "force-dynamic";
@@ -172,6 +174,8 @@ export default async function DashboardPage(props: Props) {
     <div className="mx-auto max-w-7xl px-4 py-12">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
         <h1 className="text-3xl font-bold">{t.dashboardTitle}</h1>
+        <div className="flex flex-wrap items-center gap-4">
+          {aiConfigured() && <CreditPill userId={user.id} locale={locale} />}
         <form action={logout} className="flex items-center gap-3 text-sm text-muted">
           <input type="hidden" name="locale" value={locale} />
           <span>{user.email}</span>
@@ -179,6 +183,7 @@ export default async function DashboardPage(props: Props) {
             {t.logout}
           </button>
         </form>
+        </div>
       </div>
 
       {rows.length === 0 ? (

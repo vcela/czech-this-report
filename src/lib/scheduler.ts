@@ -1,6 +1,7 @@
 import { auditSlotFree } from "./audit/isolate";
 import { getDb } from "./db";
-import { aiConfigured, runGeoCheck } from "./ai";
+import { aiConfigured, parsePrompts, runGeoCheck } from "./ai";
+import { PRICES, remainingCredits } from "./credits";
 import { runInspection } from "./indexing";
 import { auditSite, sitesDueForAudit, type Site } from "./sites";
 
@@ -24,7 +25,9 @@ function dueForGeo(): Site[] {
       `SELECT s.* FROM sites s WHERE s.geo_prompts != ''
          AND COALESCE((SELECT MAX(run_at) FROM geo_results WHERE site_id = s.id), 0) < ?`
     )
-    .all(Date.now() - WEEK) as Site[];
+    .all(Date.now() - WEEK)
+    // Out of credits: wait for the monthly refill instead of failing every hour.
+    .filter((s) => remainingCredits((s as Site).user_id) >= parsePrompts((s as Site).geo_prompts).length * PRICES.geo) as Site[];
 }
 
 async function each<T extends { host: string }>(label: string, list: T[], fn: (x: T) => Promise<unknown>) {

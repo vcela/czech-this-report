@@ -1,6 +1,7 @@
 import { getDb } from "./db";
 import { fetchSite } from "./audit/fetcher";
 import type { Site } from "./sites";
+import { PRICES, assertCredits, recordUsage, type Meter } from "./credits";
 
 /**
  * OpenAI Responses API over fetch. The model is configurable because model
@@ -16,7 +17,9 @@ interface Answer {
   citations: string[];
 }
 
+/** Every call is metered: one fixed charge per call, plus the real token and search usage. */
 async function respond(opts: {
+  meter: Meter;
   input: string;
   webSearch?: boolean;
   schema?: { name: string; schema: object };
@@ -36,8 +39,14 @@ async function respond(opts: {
   });
   if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const data = (await res.json()) as {
+    usage?: { input_tokens?: number; output_tokens?: number };
     output?: { type: string; content?: { type: string; text?: string; annotations?: { type: string; url?: string }[] }[] }[];
   };
+  recordUsage(opts.meter, {
+    input: data.usage?.input_tokens ?? 0,
+    output: data.usage?.output_tokens ?? 0,
+    searches: (data.output ?? []).filter((o) => o.type === "web_search_call").length,
+  });
   let text = "";
   const citations = new Set<string>();
   for (const item of data.output ?? []) {
@@ -95,6 +104,8 @@ export const parsePrompts = (raw: string) =>
  */
 export async function runGeoCheck(site: Site): Promise<number> {
   const prompts = parsePrompts(site.geo_prompts);
+  // The whole run or nothing: half a week's answers would skew the history.
+  assertCredits(site.user_id, prompts.length * PRICES.geo);
   const brand = (site.brand || site.host.split(".")[0]).toLowerCase();
   const save = getDb().prepare(
     `INSERT INTO geo_results (site_id, run_at, prompt, cited, mentioned, cited_urls, answer) VALUES (?, ?, ?, ?, ?, ?, ?)`
@@ -102,7 +113,7 @@ export async function runGeoCheck(site: Site): Promise<number> {
   const runAt = Date.now();
   let n = 0;
   for (const prompt of prompts) {
-    const a = await respond({ input: prompt, webSearch: true });
+    const a = await respond({ meter: { userId: site.user_id, siteId: site.id, kind: "geo" }, input: prompt, webSearch: true });
     const cited = a.citations.some((u) => belongs(hostOf(u), site.host));
     const lower = a.text.toLowerCase();
     const mentioned = cited || lower.includes(site.host) || (brand.length > 2 && lower.includes(brand));
@@ -146,6 +157,7 @@ export function citedInstead(run: GeoRun | undefined, siteHost: string): { domai
 export async function suggestPrompts(site: Site): Promise<string[]> {
   const brief = await siteBrief(site);
   const r = await respond({
+    meter: { userId: site.user_id, siteId: site.id, kind: "prompts" },
     input: `${brief}\n\nWrite 6 questions a potential customer of this website might type into ChatGPT when looking for what it offers — without naming the brand. Write them in the website's language. Realistic, specific, varied (comparisons, "best … in <city>", how-to, price).`,
     schema: {
       name: "prompts",
@@ -173,6 +185,7 @@ export async function suggestTopics(
   const gsc = signals.gscQueries.slice(0, 40).map((x) => `${x.q} (impressions ${x.impressions}, position ${x.position.toFixed(1)})`).join("\n");
   const search = signals.siteSearches.slice(0, 20).map((x) => `${x.q} (${x.count}×, no results ${x.noResults}×)`).join("\n");
   const r = await respond({
+    meter: { userId: site.user_id, siteId: site.id, kind: "topics" },
     input: `${brief}
 
 Google Search Console queries this site appears for:
@@ -215,6 +228,7 @@ Suggest up to 8 concrete content actions that would bring this website more rele
 export async function findCompetitors(site: Site, locale: string): Promise<{ domain: string; reason: string }[]> {
   const brief = await siteBrief(site);
   const r = await respond({
+    meter: { userId: site.user_id, siteId: site.id, kind: "competitors" },
     input: `${brief}\n\nSearch the web and list up to 6 websites that compete with this one for the same customers (same offer, same market/country). Exclude marketplaces, directories and the site itself. Give the bare domain and one short reason in ${locale === "cs" ? "Czech" : "English"}.`,
     webSearch: true,
     schema: {

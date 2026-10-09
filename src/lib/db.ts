@@ -136,6 +136,20 @@ export function getDb(): Database.Database {
       added_at INTEGER NOT NULL,
       PRIMARY KEY (site_id, domain)
     );
+    CREATE TABLE IF NOT EXISTS ai_usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      site_id TEXT,
+      ts INTEGER NOT NULL,
+      day TEXT NOT NULL,
+      month TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      credits INTEGER NOT NULL,
+      input_tokens INTEGER NOT NULL DEFAULT 0,
+      output_tokens INTEGER NOT NULL DEFAULT 0,
+      searches INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_ai_usage ON ai_usage(user_id, month);
     CREATE TABLE IF NOT EXISTS campaign_costs (
       site_id TEXT NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
       campaign TEXT NOT NULL,

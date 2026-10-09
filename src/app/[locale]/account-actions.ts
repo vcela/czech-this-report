@@ -16,6 +16,7 @@ import { sitemapEntries } from "@/lib/crawl";
 import { aiConfigured, findCompetitors, runGeoCheck, saveSuggestion, suggestPrompts, suggestTopics, MAX_PROMPTS } from "@/lib/ai";
 import { getStats, parseGoals, setCampaignCost } from "@/lib/analytics";
 import { runSetupChecks } from "@/lib/setup";
+import { NotEnoughCredits, PRICES, assertCredits, type CreditKind } from "@/lib/credits";
 
 const loc = (fd: FormData): Locale => {
   const l = String(fd.get("locale") ?? "");
@@ -196,10 +197,15 @@ async function aiAction(fd: FormData, kind: string, fn: (ctx: Awaited<ReturnType
   if (throttled(`${kind}:${ctx.site.id}`)) redirect(`${ctx.path}/ai?msg=wait`);
   let msg = `${kind}-ok`;
   try {
+    // geo checks its own cost (questions × price); the rest are one call each
+    if (kind !== "geo") assertCredits(ctx.user.id, PRICES[kind as CreditKind]);
     await fn(ctx);
   } catch (e) {
-    console.error(`AI ${kind} failed`, e);
-    msg = "ai-error";
+    if (e instanceof NotEnoughCredits) msg = "credits";
+    else {
+      console.error(`AI ${kind} failed`, e);
+      msg = "ai-error";
+    }
   }
   redirect(`${ctx.path}/ai?msg=${msg}#${kind}`);
 }

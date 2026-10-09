@@ -12,6 +12,7 @@ export const VERIFY_META = "czech-this-verify";
 
 export interface Site {
   id: string;
+  user_id: number;
   url: string;
   host: string;
   verify_token: string;

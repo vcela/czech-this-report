@@ -92,3 +92,55 @@ body {
     text-decoration: none;
   }
 }
+
+/* Account area: credits page motion (neutralised by the reduced-motion rule above) */
+@keyframes ctr-ring {
+  from {
+    stroke-dashoffset: var(--ring-full);
+  }
+}
+@keyframes ctr-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes ctr-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes ctr-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes ctr-float {
+  50% {
+    transform: translateY(-3px) rotate(-6deg);
+  }
+}
+.anim-ring {
+  animation: ctr-ring 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-grow-x {
+  transform-origin: left;
+  animation: ctr-grow-x 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-grow-y {
+  transform-origin: bottom;
+  transform-box: fill-box;
+  animation: ctr-grow-y 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-rise {
+  animation: ctr-rise 0.5s ease-out both;
+}
+.anim-float {
+  animation: ctr-float 3s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* an infinite loop at 0.01ms would flicker, not stop */
+  .anim-float {
+    animation: none;
+  }
+}
