@@ -118,9 +118,27 @@ const INDEXNOW = "https://api.indexnow.org/indexnow";
 const keyFileUrl = (site: Site) => `${new URL(site.url).origin}/${site.indexnow_key}.txt`;
 export { keyFileUrl as indexNowKeyUrl };
 
+/** What we found at the key file URL; `found` is the start of the file when it doesn't match. */
+export type KeyCheck = { ok: true } | { ok: false; status: number | null; found: string | null };
+
+/**
+ * Fetches the key file and records the outcome on the site, so the setup
+ * checklist and the IndexNow button agree, and a failure says why.
+ */
+export async function checkIndexNowKey(site: Site): Promise<KeyCheck> {
+  const { text, status } = await fetchTextIfOk(keyFileUrl(site));
+  // Editors on Windows like to add a BOM; trim() doesn't remove it everywhere.
+  const found = text?.replace(/^﻿/, "").trim() ?? null;
+  const result: KeyCheck =
+    found !== null && found === site.indexnow_key ? { ok: true } : { ok: false, status, found: found ? found.slice(0, 60) : null };
+  getDb()
+    .prepare("UPDATE sites SET indexnow_ok_at = ?, indexnow_error = ? WHERE id = ?")
+    .run(result.ok ? Date.now() : null, result.ok ? null : JSON.stringify(result), site.id);
+  return result;
+}
+
 export async function indexNowKeyOk(site: Site): Promise<boolean> {
-  const { text } = await fetchTextIfOk(keyFileUrl(site));
-  return text?.trim() === site.indexnow_key;
+  return (await checkIndexNowKey(site)).ok;
 }
 
 export type IndexNowResult =

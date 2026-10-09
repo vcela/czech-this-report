@@ -26,6 +26,7 @@ export interface Site {
   brand: string;
   snippet_found_at: number | null;
   indexnow_ok_at: number | null;
+  indexnow_error: string | null;
 }
 
 export interface SiteRow extends Site {

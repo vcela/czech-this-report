@@ -154,6 +154,7 @@ export function getDb(): Database.Database {
     "brand TEXT NOT NULL DEFAULT ''",
     "snippet_found_at INTEGER",
     "indexnow_ok_at INTEGER",
+    "indexnow_error TEXT",
   ]) {
     try {
       db.exec(`ALTER TABLE sites ADD COLUMN ${col}`);

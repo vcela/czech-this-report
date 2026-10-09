@@ -2,7 +2,7 @@ import { getDb } from "./db";
 import { fetchTextIfOk } from "./audit/fetcher";
 import { BOT_UA_PATTERN } from "./bots";
 import { googleConfigured, hasGoogle } from "./google";
-import { indexNowKeyOk, indexNowKeyUrl } from "./indexing";
+import { checkIndexNowKey, indexNowKeyUrl } from "./indexing";
 import { SITE_URL } from "./site";
 import { VERIFY_META, verifySite, type Site } from "./sites";
 
@@ -43,17 +43,34 @@ export function setupStatus(site: Site, userId: number): Record<StepId, StepStat
   };
 }
 
-/** The "Check deployment" button: look at the live site for everything we can see from outside. */
+/**
+ * Look at the live site for everything we can see from outside: the
+ * verification tag, the measuring code and the IndexNow key file. Runs on the
+ * "Check deployment" button and, throttled, whenever Settings is opened with
+ * one of those steps still open.
+ */
 export async function runSetupChecks(site: Site): Promise<void> {
   const db = getDb();
-  const [{ text: html }] = await Promise.all([
-    fetchTextIfOk(site.url),
-    site.verified_at ? Promise.resolve(true) : verifySite(site),
-  ]);
+  const [{ text: html }] = await Promise.all([fetchTextIfOk(site.url), checkIndexNowKey(site).catch(() => null)]);
   const found = !!html && html.includes(`data-site="${site.id}"`) && html.includes("ctr.js");
   db.prepare("UPDATE sites SET snippet_found_at = ? WHERE id = ?").run(found ? Date.now() : null, site.id);
-  const keyOk = await indexNowKeyOk(site).catch(() => false);
-  db.prepare("UPDATE sites SET indexnow_ok_at = ? WHERE id = ?").run(keyOk ? Date.now() : null, site.id);
+  if (!site.verified_at) await verifySite(site);
+}
+
+const lastAutoCheck = new Map<string, number>();
+
+/** Re-check open steps when Settings is opened, at most once a minute per site. */
+export async function autoCheck(site: Site, status: Record<StepId, StepState>): Promise<boolean> {
+  const open = status.verify !== "done" || status.snippet === "todo" || status.indexnow !== "done";
+  const last = lastAutoCheck.get(site.id) ?? 0;
+  if (!open || Date.now() - last < 60_000) return false;
+  lastAutoCheck.set(site.id, Date.now());
+  try {
+    await runSetupChecks(site);
+  } catch (e) {
+    console.error("Setup auto-check failed", e);
+  }
+  return true;
 }
 
 /** Every snippet the owner (or their AI) needs, filled in for this site. */

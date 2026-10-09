@@ -8,7 +8,7 @@ import {
   checkSetupAction, deleteSiteAction, disconnectGoogleAction, saveGoalsAction, setPropertyAction, verifySiteAction,
 } from "../../../account-actions";
 import { googleConfigured, hasGoogle, listProperties } from "@/lib/google";
-import { OPTIONAL, STEPS, buildSetupPrompt, setupStatus, siteSnippets, type StepId, type StepState } from "@/lib/setup";
+import { OPTIONAL, STEPS, autoCheck, buildSetupPrompt, setupStatus, siteSnippets, type StepId, type StepState } from "@/lib/setup";
 import { SubmitButton } from "@/components/account/Forms";
 import { CopyButton } from "@/components/account/CopyButton";
 import { Flash, Hidden, fill } from "@/components/account/Ui";
@@ -89,15 +89,34 @@ export default async function SetupPage(props: Props) {
   const { locale, siteId } = await props.params;
   if (!isLocale(locale)) notFound();
   const user = await requireUser(locale);
-  const site = getSite(user.id, siteId);
+  let site = getSite(user.id, siteId);
   if (!site) notFound();
   const sp = await props.searchParams;
   const dict = getDict(locale);
   const t = dict.account;
   const s = t.setup;
   const hidden = <Hidden locale={locale} siteId={site.id} />;
+  let status = setupStatus(site, user.id);
+  // Open steps get checked against the live site without a button press.
+  if (await autoCheck(site, status)) {
+    site = getSite(user.id, siteId)!;
+    status = setupStatus(site, user.id);
+  }
   const snip = siteSnippets(site);
-  const status = setupStatus(site, user.id);
+  // Why the key file didn't pass, in words (404, wrong content, no answer).
+  const keyError = (() => {
+    if (status.indexnow === "done" || !site.indexnow_error) return null;
+    const e = JSON.parse(site.indexnow_error) as { status: number | null; found: string | null };
+    const why =
+      e.found !== null
+        ? fill(s.keyWrongContent, { found: e.found })
+        : e.status === 404
+          ? s.keyNotFound
+          : e.status
+            ? fill(s.keyHttp, { status: e.status })
+            : s.keyNoAnswer;
+    return fill(s.keyCheckFailed, { url: snip.indexNowUrl, why });
+  })();
   const prompt = buildSetupPrompt(site, status, s.prompt);
   const required = STEPS.filter((x) => !OPTIONAL.includes(x));
   const doneCount = required.filter((x) => status[x] === "done").length;
@@ -119,7 +138,7 @@ export default async function SetupPage(props: Props) {
       id={id}
       state={status[id]}
       title={s.stepTitles[id]}
-      note={s.stepNotes[`${id}_${status[id]}`] ?? s.stepNotes[`${id}_todo`]}
+      note={(id === "indexnow" && keyError) || (s.stepNotes[`${id}_${status[id]}`] ?? s.stepNotes[`${id}_todo`])}
       stateLabel={OPTIONAL.includes(id) && status[id] === "todo" ? s.states.optional : s.states[status[id]]}
       optional={OPTIONAL.includes(id)}
     >
