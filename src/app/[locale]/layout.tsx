@@ -53,6 +53,15 @@ export default async function RootLayout(props: Props) {
 
   return (
     <html lang={locale} className={`${montserratAlternates.variable} h-full antialiased`}>
+      <head>
+        <meta name="czech-this-verify" content="545d6d8fecc9fc0e65a4cd7d0c673405" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "window.ctr=window.ctr||function(){(ctr.q=ctr.q||[]).push(arguments)}",
+          }}
+        />
+        <script defer src="https://report.czech-this.com/ctr.js" data-site="xErIOegcCsWG"></script>
+      </head>
       <body className="min-h-full flex flex-col">
         <a
           href="#main"
